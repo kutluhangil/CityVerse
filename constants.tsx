@@ -93,4 +93,13 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
     popGen: 0,
     incomeGen: 0,
   },
+  [BuildingType.Inspect]: {
+    type: BuildingType.Inspect,
+    cost: 0,
+    name: 'Inspect',
+    description: 'Select a building to view details and upgrade options.',
+    color: '#a855f7', // purple-500
+    popGen: 0,
+    incomeGen: 0,
+  },
 };

@@ -15,6 +15,8 @@ interface UIOverlayProps {
   onClaimReward: () => void;
   isGeneratingGoal: boolean;
   aiEnabled: boolean;
+  maxCars: number;
+  setMaxCars: (n: number) => void;
 }
 
 const tools = [
@@ -26,7 +28,7 @@ const tools = [
   BuildingType.Park,
   BuildingType.ParkPlayground,
   BuildingType.ParkFountain,
-  BuildingType.Upgrade,
+  BuildingType.Inspect,
 ];
 
 const ToolButton: React.FC<{
@@ -74,7 +76,9 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   newsFeed,
   onClaimReward,
   isGeneratingGoal,
-  aiEnabled
+  aiEnabled,
+  maxCars,
+  setMaxCars
 }) => {
   const newsRef = useRef<HTMLDivElement>(null);
 
@@ -219,6 +223,16 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
             ))}
           </div>
           <div className="text-[8px] text-gray-500 uppercase writing-mode-vertical flex items-center justify-center font-bold tracking-widest border-l border-gray-700 pl-1 ml-1 select-none">Build</div>
+        </div>
+
+        {/* Traffic Controls */}
+        <div className="hidden md:flex flex-col gap-2 p-2 bg-gray-900/80 rounded-2xl border border-gray-600/50 backdrop-blur-xl shadow-2xl items-center justify-center min-w-[120px]">
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Traffic limit</div>
+          <div className="flex items-center gap-3">
+             <button onClick={() => setMaxCars(Math.max(0, maxCars - 2))} className="w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-white font-bold">-</button>
+             <span className="text-white font-mono text-lg">{maxCars}</span>
+             <button onClick={() => setMaxCars(Math.min(50, maxCars + 2))} className="w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-white font-bold">+</button>
+          </div>
         </div>
 
         {/* News Feed */}

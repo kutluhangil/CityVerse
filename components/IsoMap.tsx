@@ -359,11 +359,26 @@ const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, tra
   );
 });
 
+// --- Car Geometries ---
+const carBodyGeo = new THREE.BoxGeometry(0.5, 0.12, 0.28);
+carBodyGeo.translate(0, 0.06, 0);
+
+const carCabinGeo = new THREE.BoxGeometry(0.25, 0.12, 0.24);
+carCabinGeo.translate(-0.05, 0.18, 0);
+
+const wheelGeoBase = new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12);
+wheelGeoBase.rotateX(Math.PI/2);
+// 4 wheels geometries
+const wheel1Geo = wheelGeoBase.clone(); wheel1Geo.translate(0.15, 0.06, 0.15);
+const wheel2Geo = wheelGeoBase.clone(); wheel2Geo.translate(-0.15, 0.06, 0.15);
+const wheel3Geo = wheelGeoBase.clone(); wheel3Geo.translate(0.15, 0.06, -0.15);
+const wheel4Geo = wheelGeoBase.clone(); wheel4Geo.translate(-0.15, 0.06, -0.15);
+
 // --- 2. Dynamic Systems (Traffic, Citizens, Environment) ---
 
 const carColors = ['#ef4444', '#3b82f6', '#eab308', '#ffffff', '#1f2937', '#f97316'];
 
-const TrafficSystem = ({ grid }: { grid: Grid }) => {
+const TrafficSystem = ({ grid, maxCars }: { grid: Grid, maxCars: number }) => {
   const roadTilesMap = useMemo(() => {
     const map = new Map<string, {x: number, y: number, neighbors: number}>();
     grid.forEach(row => row.forEach(tile => {
@@ -384,8 +399,13 @@ const TrafficSystem = ({ grid }: { grid: Grid }) => {
 
   const roadTiles = useMemo(() => Array.from(roadTilesMap.values()), [roadTilesMap]);
 
-  const carCount = Math.min(roadTiles.length, 30);
+  const carCount = Math.min(roadTiles.length, maxCars);
   const carsRef = useRef<THREE.InstancedMesh>(null);
+  const cabinRef = useRef<THREE.InstancedMesh>(null);
+  const w1Ref = useRef<THREE.InstancedMesh>(null);
+  const w2Ref = useRef<THREE.InstancedMesh>(null);
+  const w3Ref = useRef<THREE.InstancedMesh>(null);
+  const w4Ref = useRef<THREE.InstancedMesh>(null);
   const carsState = useRef<Float32Array>(new Float32Array(0)); 
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const colors = useMemo(() => new Float32Array(0), []);
@@ -405,7 +425,7 @@ const TrafficSystem = ({ grid }: { grid: Grid }) => {
       carsState.current[i*6 + 2] = startNode.x;
       carsState.current[i*6 + 3] = startNode.y;
       carsState.current[i*6 + 4] = 1; // force pick new target
-      carsState.current[i*6 + 5] = getRandomRange(0.01, 0.03); // speed
+      carsState.current[i*6 + 5] = getRandomRange(0.005, 0.012); // smoother speed
 
       const color = new THREE.Color(carColors[Math.floor(Math.random() * carColors.length)]);
       newColors[i*3] = color.r; newColors[i*3+1] = color.g; newColors[i*3+2] = color.b;
@@ -538,24 +558,51 @@ const TrafficSystem = ({ grid }: { grid: Grid }) => {
 
       const [wx, _, wz] = gridToWorld(gx + offX, gy + offY);
 
-      // Road surface is approx -0.3. Car height 0.15.
-      dummy.position.set(wx, -0.3 + 0.075, wz);
+      // Road surface is approx -0.3. Geometry bottom is at 0.
+      dummy.position.set(wx, -0.3, wz);
       dummy.rotation.set(0, -angle, 0);
       // Car dimensions (Length(X), Height(Y), Width(Z) assuming 0 rotation aligns with X)
-      dummy.scale.set(0.5, 0.15, 0.3); 
-      
+      // we don't scale dummy here because geometries already have sizes
+      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
+      
       carsRef.current.setMatrixAt(i, dummy.matrix);
+      cabinRef.current?.setMatrixAt(i, dummy.matrix);
+      w1Ref.current?.setMatrixAt(i, dummy.matrix);
+      w2Ref.current?.setMatrixAt(i, dummy.matrix);
+      w3Ref.current?.setMatrixAt(i, dummy.matrix);
+      w4Ref.current?.setMatrixAt(i, dummy.matrix);
     }
     carsRef.current.instanceMatrix.needsUpdate = true;
+    if (cabinRef.current) cabinRef.current.instanceMatrix.needsUpdate = true;
+    if (w1Ref.current) w1Ref.current.instanceMatrix.needsUpdate = true;
+    if (w2Ref.current) w2Ref.current.instanceMatrix.needsUpdate = true;
+    if (w3Ref.current) w3Ref.current.instanceMatrix.needsUpdate = true;
+    if (w4Ref.current) w4Ref.current.instanceMatrix.needsUpdate = true;
+
   });
 
   if (roadTiles.length < 2) return null;
 
   return (
     <group>
-        <instancedMesh ref={carsRef} args={[boxGeo, undefined, carCount]} castShadow>
+        <instancedMesh ref={carsRef} args={[carBodyGeo, undefined, carCount]} castShadow>
           <meshStandardMaterial roughness={0.5} metalness={0.3} />
+        </instancedMesh>
+        <instancedMesh ref={cabinRef} args={[carCabinGeo, undefined, carCount]} castShadow>
+           <meshStandardMaterial color="#111827" roughness={0.1} metalness={0.8} />
+        </instancedMesh>
+        <instancedMesh ref={w1Ref} args={[wheel1Geo, undefined, carCount]} castShadow>
+           <meshStandardMaterial color="#000000" roughness={0.9} />
+        </instancedMesh>
+        <instancedMesh ref={w2Ref} args={[wheel2Geo, undefined, carCount]} castShadow>
+           <meshStandardMaterial color="#000000" roughness={0.9} />
+        </instancedMesh>
+        <instancedMesh ref={w3Ref} args={[wheel3Geo, undefined, carCount]} castShadow>
+           <meshStandardMaterial color="#000000" roughness={0.9} />
+        </instancedMesh>
+        <instancedMesh ref={w4Ref} args={[wheel4Geo, undefined, carCount]} castShadow>
+           <meshStandardMaterial color="#000000" roughness={0.9} />
         </instancedMesh>
         {lampCount > 0 && (
            <instancedMesh ref={lampsRef} args={[cylinderGeo, undefined, lampCount]}>
@@ -566,121 +613,7 @@ const TrafficSystem = ({ grid }: { grid: Grid }) => {
   );
 };
 
-const clothesColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#ffffff'];
-
-const PopulationSystem = ({ population, grid }: { population: number, grid: Grid }) => {
-    const agentCount = Math.min(Math.floor(population / 2), 300); 
-    const meshRef = useRef<THREE.InstancedMesh>(null);
-    
-    // Find tiles where people can walk (Roads, Parks, empty ground)
-    const walkableTiles = useMemo(() => {
-        const tiles: {x: number, y: number}[] = [];
-        grid.forEach(row => row.forEach(tile => {
-          if (tile.buildingType === BuildingType.Road || tile.buildingType === BuildingType.Park || tile.buildingType === BuildingType.None) {
-            tiles.push({x: tile.x, y: tile.y});
-          }
-        }));
-        return tiles;
-    }, [grid]);
-    
-    const agentsState = useRef<Float32Array>(new Float32Array(0));
-    const dummy = useMemo(() => new THREE.Object3D(), []);
-    
-    useEffect(() => {
-        if (agentCount === 0 || walkableTiles.length === 0) return;
-        agentsState.current = new Float32Array(agentCount * 6);
-        const newColors = new Float32Array(agentCount * 3);
-
-        for(let i=0; i<agentCount; i++) {
-            const t = walkableTiles[Math.floor(Math.random() * walkableTiles.length)];
-            // Spawn with random offset in tile
-            const x = t.x + getRandomRange(-0.4, 0.4);
-            const y = t.y + getRandomRange(-0.4, 0.4);
-
-            agentsState.current[i*6+0] = x;
-            agentsState.current[i*6+1] = y;
-            
-            // Initial target
-            const tt = walkableTiles[Math.floor(Math.random() * walkableTiles.length)];
-            agentsState.current[i*6+2] = tt.x + getRandomRange(-0.4, 0.4);
-            agentsState.current[i*6+3] = tt.y + getRandomRange(-0.4, 0.4);
-            
-            agentsState.current[i*6+4] = getRandomRange(0.005, 0.015); // speed
-            agentsState.current[i*6+5] = Math.random() * Math.PI * 2; // anim
-
-            const c = new THREE.Color(clothesColors[Math.floor(Math.random() * clothesColors.length)]);
-            newColors[i*3] = c.r; newColors[i*3+1] = c.g; newColors[i*3+2] = c.b;
-        }
-
-        if (meshRef.current) {
-            meshRef.current.instanceColor = new THREE.InstancedBufferAttribute(newColors, 3);
-        }
-    }, [agentCount, walkableTiles]);
-
-    useFrame((state) => {
-        if (!meshRef.current || agentCount === 0 || agentsState.current.length === 0) return;
-        const time = state.clock.elapsedTime;
-
-        for(let i=0; i<agentCount; i++) {
-            const idx = i*6;
-            let x = agentsState.current[idx];
-            let y = agentsState.current[idx+1];
-            let tx = agentsState.current[idx+2];
-            let ty = agentsState.current[idx+3];
-            const speed = agentsState.current[idx+4];
-            const animOffset = agentsState.current[idx+5];
-
-            const dx = tx - x;
-            const dy = ty - y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-
-            if (dist < 0.1) {
-                // Pick new random target from walkable
-                if (walkableTiles.length > 0) {
-                    const tt = walkableTiles[Math.floor(Math.random() * walkableTiles.length)];
-                    tx = tt.x + getRandomRange(-0.4, 0.4);
-                    ty = tt.y + getRandomRange(-0.4, 0.4);
-                    agentsState.current[idx+2] = tx;
-                    agentsState.current[idx+3] = ty;
-                }
-            } else {
-                x += (dx/dist) * speed;
-                y += (dy/dist) * speed;
-                agentsState.current[idx] = x;
-                agentsState.current[idx+1] = y;
-            }
-
-            const [wx, _, wz] = gridToWorld(x, y);
-
-            // Walking bounce
-            const bounce = Math.abs(Math.sin(time * 10 + animOffset)) * 0.03;
-
-            // Person dimensions
-            const height = 0.2;
-            const width = 0.08;
-            // Ground level approx -0.3 to -0.4
-            const groundY = -0.35; 
-
-            dummy.position.set(wx, groundY + height/2 + bounce, wz);
-            dummy.rotation.set(0, -Math.atan2(dy, dx), 0);
-            dummy.scale.set(width, height, width);
-            
-            dummy.updateMatrix();
-            meshRef.current.setMatrixAt(i, dummy.matrix);
-        }
-        meshRef.current.instanceMatrix.needsUpdate = true;
-    });
-
-    if (agentCount === 0) return null;
-
-    return (
-        <instancedMesh ref={meshRef} args={[boxGeo, undefined, agentCount]} castShadow>
-            <meshStandardMaterial roughness={0.8} />
-        </instancedMesh>
-    )
-};
-
-// Clouds & Birds
+// Clouds & Birds// Clouds & Birds
 const Cloud = ({ position, scale, speed }: { position: [number, number, number], scale: number, speed: number }) => {
     const group = useRef<THREE.Group>(null);
     useFrame((state, delta) => {
@@ -790,6 +723,8 @@ const WeatherParticles = ({ type }: { type: string }) => {
 const DayNightSystem = () => {
     const dirLightRef = useRef<THREE.DirectionalLight>(null);
     const ambientLightRef = useRef<THREE.AmbientLight>(null);
+    const sunRef = useRef<THREE.Mesh>(null);
+    const moonRef = useRef<THREE.Mesh>(null);
     
     useFrame((state) => {
         const time = state.clock.elapsedTime * 0.05; // Day cycle lasts around 125 seconds
@@ -799,6 +734,15 @@ const DayNightSystem = () => {
             dirLightRef.current.position.x = Math.cos(sunAngle) * 30;
             dirLightRef.current.position.y = Math.sin(sunAngle) * 30;
             dirLightRef.current.position.z = Math.sin(sunAngle) * 15;
+            
+            if (sunRef.current) {
+                sunRef.current.position.copy(dirLightRef.current.position);
+                sunRef.current.visible = !isNight;
+            }
+            if (moonRef.current) {
+                moonRef.current.position.set(-dirLightRef.current.position.x, -dirLightRef.current.position.y, -dirLightRef.current.position.z);
+                moonRef.current.visible = isNight;
+            }
             
             const isNight = dirLightRef.current.position.y < 0;
             dirLightRef.current.intensity = isNight ? 0 : Math.max(0, Math.sin(sunAngle) * 2);
@@ -1009,9 +953,10 @@ interface IsoMapProps {
   hoveredTool: BuildingType;
   population: number;
   weather?: string;
+  maxCars?: number;
 }
 
-const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny' }) => {
+const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny', maxCars = 6 }) => {
   const [hoveredTile, setHoveredTile] = useState<{x: number, y: number} | null>(null);
 
   const handleHover = useCallback((x: number, y: number) => {
@@ -1083,8 +1028,7 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
 
           {/* Visual Elements - disable pointer events */}
           <group raycast={() => null}>
-            <TrafficSystem grid={grid} />
-            <PopulationSystem population={population} grid={grid} />
+            <TrafficSystem grid={grid} maxCars={maxCars} />
 
             {/* Placement Preview */}
             {showPreview && hoveredTile && (

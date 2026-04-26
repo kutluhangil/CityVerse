@@ -12,6 +12,7 @@ export enum BuildingType {
   ParkPlayground = 'ParkPlayground',
   ParkFountain = 'ParkFountain',
   Upgrade = 'Upgrade',
+  Inspect = 'Inspect',
 }
 
 export interface BuildingConfig {

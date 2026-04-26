@@ -81,7 +81,17 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
       const goalData = JSON.parse(response.text) as Omit<AIGoal, 'completed'>;
       return { ...goalData, completed: false };
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {
+       return {
+          description: "Build 5 new Residential Zones to expand our city!",
+          targetType: "building_count",
+          targetValue: 5,
+          buildingType: BuildingType.Residential,
+          reward: 500,
+          completed: false
+       };
+    }
     console.error("Error generating goal:", error);
   }
   return null;
@@ -126,7 +136,14 @@ export const generateNewsEvent = async (stats: CityStats, recentAction: string |
         type: data.type,
       };
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {
+       return {
+         id: Date.now().toString() + Math.random(),
+         text: "Citizens appreciate the steady growth of the city.",
+         type: 'positive'
+       };
+    }
     console.error("Error generating news:", error);
   }
   return null;
