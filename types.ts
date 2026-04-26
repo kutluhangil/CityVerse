@@ -11,6 +11,7 @@ export enum BuildingType {
   Park = 'Park',
   ParkPlayground = 'ParkPlayground',
   ParkFountain = 'ParkFountain',
+  Upgrade = 'Upgrade',
 }
 
 export interface BuildingConfig {
@@ -29,15 +30,19 @@ export interface TileData {
   buildingType: BuildingType;
   // Suggested by AI for visual variety later
   variant?: number;
+  level?: number;
 }
 
 export type Grid = TileData[][];
+
+export type WeatherType = 'sunny' | 'rainy' | 'snowy';
 
 export interface CityStats {
   money: number;
   population: number;
   day: number;
   happiness: number;
+  weather: WeatherType;
 }
 
 export interface AIGoal {

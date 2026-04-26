@@ -84,4 +84,13 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
     popGen: 0,
     incomeGen: -5,
   },
+  [BuildingType.Upgrade]: {
+    type: BuildingType.Upgrade,
+    cost: 100, // Base upgrade cost, acts as a general tool
+    name: 'Upgrade',
+    description: 'Enhance a building to increase its stats and height.',
+    color: '#eab308', // yellow-500
+    popGen: 0,
+    incomeGen: 0,
+  },
 };

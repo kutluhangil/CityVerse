@@ -26,6 +26,7 @@ const tools = [
   BuildingType.Park,
   BuildingType.ParkPlayground,
   BuildingType.ParkFountain,
+  BuildingType.Upgrade,
 ];
 
 const ToolButton: React.FC<{
@@ -110,6 +111,11 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           <div className="flex flex-col items-end">
              <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest">Joy</span>
              <span className={`text-base md:text-lg font-bold font-mono ${stats.happiness >= 60 ? 'text-green-300' : stats.happiness < 40 ? 'text-red-400' : 'text-yellow-300'}`}>{stats.happiness}%</span>
+          </div>
+          <div className="w-px h-6 md:h-8 bg-gray-700"></div>
+          <div className="flex flex-col items-end">
+             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest">Weather</span>
+             <span className="text-base md:text-lg font-bold text-white font-mono capitalize">{stats.weather || 'Sunny'}</span>
           </div>
         </div>
 
@@ -245,7 +251,6 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       
       {/* Credits */}
       <div className="absolute bottom-1 right-2 md:right-4 text-[8px] md:text-[9px] text-white/30 font-mono text-right pointer-events-auto hover:text-white/60 transition-colors">
-        <a href="https://x.com/ammaar" target="_blank" rel="noreferrer">Created by @ammaar</a>
       </div>
     </div>
   );

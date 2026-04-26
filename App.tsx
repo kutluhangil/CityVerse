@@ -17,7 +17,7 @@ const createInitialGrid = (): Grid => {
   for (let y = 0; y < GRID_SIZE; y++) {
     const row: TileData[] = [];
     for (let x = 0; x < GRID_SIZE; x++) {
-      row.push({ x, y, buildingType: BuildingType.None });
+      row.push({ x, y, buildingType: BuildingType.None, level: 1 });
     }
     grid.push(row);
   }
@@ -50,7 +50,7 @@ function App() {
   const [aiEnabled, setAiEnabled] = useState(true);
 
   const [grid, setGrid] = useState<Grid>(createInitialGrid);
-  const [stats, setStats] = useState<CityStats>({ money: INITIAL_MONEY, population: 0, day: 1, happiness: 100 });
+  const [stats, setStats] = useState<CityStats>({ money: INITIAL_MONEY, population: 0, day: 1, happiness: 100, weather: 'sunny' });
   const [selectedTool, setSelectedTool] = useState<BuildingType>(BuildingType.Road);
   
   // --- AI State ---
@@ -134,9 +134,10 @@ function App() {
       gridRef.current.flat().forEach(tile => {
         if (tile.buildingType !== BuildingType.None) {
           const config = BUILDINGS[tile.buildingType];
-          dailyIncome += config.incomeGen;
-          dailyPopGrowth += config.popGen;
-          buildingCounts[tile.buildingType] = (buildingCounts[tile.buildingType] || 0) + 1;
+          const levelMultiplier = tile.level || 1;
+          dailyIncome += config.incomeGen * levelMultiplier;
+          dailyPopGrowth += config.popGen * levelMultiplier;
+          buildingCounts[tile.buildingType] = (buildingCounts[tile.buildingType] || 0) + levelMultiplier;
         }
       });
 
@@ -164,8 +165,19 @@ function App() {
         const varietyBonus = buildingTypesPresent * 2;
 
         const parksPerCapitaBonus = prev.population > 0 ? ((parkCount + playCount*3 + fountCount*5) / (prev.population / 100)) * 10 : 0;
+        
+        let newWeather = prev.weather;
+        if (Math.random() > 0.8) {
+           const choices: ('sunny' | 'rainy' | 'snowy')[] = ['sunny', 'sunny', 'rainy', 'snowy'];
+           newWeather = choices[Math.floor(Math.random() * choices.length)];
+        }
+        
+        let weatherMod = 0;
+        if (newWeather === 'rainy') weatherMod = -5;
+        if (newWeather === 'snowy') weatherMod = -2;
+        if (newWeather === 'sunny') weatherMod = 2;
 
-        let targetHappiness = 50 + varietyBonus + Math.min(30, parksPerCapitaBonus) + (comCount * 2) - (indCount * 4);
+        let targetHappiness = 50 + varietyBonus + Math.min(30, parksPerCapitaBonus) + (comCount * 2) - (indCount * 4) + weatherMod;
         if (newPop > 0 && resCount > 0 && newPop >= maxPop * 0.9) {
            targetHappiness -= 15; // overcrowding
         }
@@ -189,6 +201,7 @@ function App() {
           population: newPop,
           day: prev.day + 1,
           happiness: newHappiness,
+          weather: newWeather,
         };
         
         // 3. Check Goal Completion
@@ -249,14 +262,37 @@ function App() {
       return;
     }
 
-    const checkNeighbors = (type: BuildingType) => {
-      const nx = [0, 0, 1, -1];
-      const ny = [1, -1, 0, 0];
-      for (let i = 0; i < 4; i++) {
-        const cx = x + nx[i];
-        const cy = y + ny[i];
-        if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
-          if (currentGrid[cy][cx].buildingType === type) return true;
+    // Upgrade Logic
+    if (tool === BuildingType.Upgrade) {
+       if (currentTile.buildingType !== BuildingType.None && currentTile.buildingType !== BuildingType.Road) {
+           const currentLevel = currentTile.level || 1;
+           if (currentLevel >= 3) {
+                addNewsItem({id: Date.now().toString() + Math.random(), text: "Building is already at max level.", type: 'neutral'});
+                return;
+           }
+           const upgradeCost = 100 * currentLevel;
+           if (currentStats.money >= upgradeCost) {
+               const newGrid = currentGrid.map(row => [...row]);
+               newGrid[y][x] = { ...currentTile, level: currentLevel + 1 };
+               setGrid(newGrid);
+               setStats(prev => ({ ...prev, money: prev.money - upgradeCost }));
+               addNewsItem({id: Date.now().toString() + Math.random(), text: `Citizen: "Wow, the new ${BUILDINGS[currentTile.buildingType].name} upgrade looks amazing!"`, type: 'positive'});
+           } else {
+               addNewsItem({id: Date.now().toString() + Math.random(), text: "Insufficient funds to upgrade building.", type: 'negative'});
+           }
+       }
+       return;
+    }
+
+    const checkRadius = (type: BuildingType, radius: number): boolean => {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const cx = x + dx;
+          const cy = y + dy;
+          if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
+            if (currentGrid[cy][cx].buildingType === type) return true;
+          }
         }
       }
       return false;
@@ -266,19 +302,19 @@ function App() {
     if (currentTile.buildingType === BuildingType.None) {
       // Validate placement
       if (tool !== BuildingType.Road && tool !== BuildingType.Park) {
-        if (!checkNeighbors(BuildingType.Road)) {
+        if (!checkRadius(BuildingType.Road, 1)) {
           addNewsItem({id: Date.now().toString() + Math.random(), text: "Buildings must be placed next to a road.", type: 'negative'});
           return;
         }
       }
 
-      if (tool === BuildingType.Industrial && checkNeighbors(BuildingType.Residential)) {
-        addNewsItem({id: Date.now().toString() + Math.random(), text: "Industrial zones cannot be adjacent to residential.", type: 'neutral'});
+      if (tool === BuildingType.Industrial && checkRadius(BuildingType.Residential, 3)) {
+        addNewsItem({id: Date.now().toString() + Math.random(), text: "Zoning error: Industrial cannot be within 3 blocks of Residential.", type: 'neutral'});
         return;
       }
       
-      if (tool === BuildingType.Residential && checkNeighbors(BuildingType.Industrial)) {
-        addNewsItem({id: Date.now().toString() + Math.random(), text: "Residential zones cannot be adjacent to industrial.", type: 'neutral'});
+      if (tool === BuildingType.Residential && checkRadius(BuildingType.Industrial, 3)) {
+        addNewsItem({id: Date.now().toString() + Math.random(), text: "Zoning error: Residential cannot be within 3 blocks of Industrial.", type: 'neutral'});
         return;
       }
 
@@ -290,7 +326,12 @@ function App() {
         const newGrid = currentGrid.map(row => [...row]);
         newGrid[y][x] = { ...currentTile, buildingType: tool };
         setGrid(newGrid);
-        // Sound effect here
+        
+        if (tool === BuildingType.Park || tool === BuildingType.ParkFountain || tool === BuildingType.ParkPlayground) {
+           addNewsItem({id: Date.now().toString() + Math.random(), text: `Citizen: "Finally, a new place to relax! Love the new ${buildingConfig.name}."`, type: 'positive'});
+        } else if (tool === BuildingType.Industrial) {
+           addNewsItem({id: Date.now().toString() + Math.random(), text: `Citizen: "Great for the economy, but I hope the smog isn't too bad..."`, type: 'neutral'});
+        }
       } else {
         // Not enough money feedback
         addNewsItem({id: Date.now().toString() + Math.random(), text: `Treasury insufficient for ${buildingConfig.name}.`, type: 'negative'});
@@ -320,6 +361,7 @@ function App() {
         onTileClick={handleTileClick} 
         hoveredTool={selectedTool}
         population={stats.population}
+        weather={stats.weather}
       />
       
       {/* Start Screen Overlay */}
