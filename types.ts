@@ -13,6 +13,7 @@ export enum BuildingType {
   ParkFountain = 'ParkFountain',
   Upgrade = 'Upgrade',
   Inspect = 'Inspect',
+  Demolish = 'Demolish',
 }
 
 export interface BuildingConfig {
@@ -48,7 +49,7 @@ export interface CityStats {
 
 export interface AIGoal {
   description: string;
-  targetType: 'population' | 'money' | 'building_count';
+  targetType: 'population' | 'money' | 'building_count' | 'happiness';
   targetValue: number;
   buildingType?: BuildingType; // If target is building_count
   reward: number;

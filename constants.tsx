@@ -102,4 +102,13 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
     popGen: 0,
     incomeGen: 0,
   },
+  [BuildingType.Demolish]: {
+    type: BuildingType.Demolish,
+    cost: 15,
+    name: 'Demolish',
+    description: 'Destroy a building for space. Partially refunds costs.',
+    color: '#dc2626', // red-600
+    popGen: 0,
+    incomeGen: 0,
+  },
 };

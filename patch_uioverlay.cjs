@@ -1,4 +1,6 @@
-/**
+const fs = require('fs');
+
+const content = `/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -145,10 +147,10 @@ const WeatherWidget = ({ weather }: { weather: string }) => {
   const isSunny = !isRainy && !isSnowy;
 
   return (
-    <div className={`relative flex items-center justify-center w-8 h-8 rounded-full border shadow-lg backdrop-blur-md transition-all duration-1000
-      ${isRainy ? 'border-blue-400/50 bg-blue-900/40 text-blue-400' :
+    <div className={\`relative flex items-center justify-center w-8 h-8 rounded-full border shadow-lg backdrop-blur-md transition-all duration-1000
+      \${isRainy ? 'border-blue-400/50 bg-blue-900/40 text-blue-400' :
         isSnowy ? 'border-indigo-300/50 bg-indigo-900/40 text-white' :
-        'border-yellow-400/50 bg-yellow-900/30 text-yellow-400'}`}
+        'border-yellow-400/50 bg-yellow-900/30 text-yellow-400'}\`}
     >
       {isSunny && <Sun size={18} className="animate-[spin_15s_linear_infinite]" />}
       {isRainy && (
@@ -189,14 +191,14 @@ const ToolButton: React.FC<{
     <button
       onClick={onClick}
       disabled={!isDemolish && !canAfford}
-      className={`
+      className={\`
         group relative flex flex-col items-center justify-between p-1 md:p-2 rounded-xl transition-all shadow-md flex-shrink-0
         w-[4.8rem] h-20 md:w-[5.2rem] md:h-[6rem] outline-none
-        border ${isSelected 
+        border \${isSelected 
             ? 'border-white/80 bg-gradient-to-b from-white/20 to-white/5 scale-105 z-10 shadow-[0_0_20px_rgba(255,255,255,0.2)] ring-2 ring-white/30' 
             : 'border-slate-600/50 bg-slate-800/80 hover:bg-slate-700/80 hover:border-slate-500/80'}
-        ${!isDemolish && !canAfford ? 'opacity-40 cursor-not-allowed grayscale-[0.6]' : 'cursor-pointer'}
-      `}
+        \${!isDemolish && !canAfford ? 'opacity-40 cursor-not-allowed grayscale-[0.6]' : 'cursor-pointer'}
+      \`}
       title={config.description}
     >
       <div className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center pointer-events-none mt-1">
@@ -209,11 +211,11 @@ const ToolButton: React.FC<{
         </span>
         <div className="flex flex-col items-center mt-[1px]">
           {config.cost > 0 && (
-            <span className={`text-[9px] font-mono leading-none font-bold ${canAfford ? 'text-yellow-400' : 'text-red-400'}`}>-$${config.cost}</span>
+            <span className={\`text-[9px] font-mono leading-none font-bold \${canAfford ? 'text-yellow-400' : 'text-red-400'}\`}>-$\${config.cost}</span>
           )}
           {(config.incomeGen !== 0 || config.popGen !== 0) && (
               <div className="flex gap-1 bg-black/40 px-1 py-[1.5px] rounded border border-white/5 shadow-inner mt-[2px]">
-                 {config.incomeGen !== 0 && <span className={`text-[8px] font-mono leading-none ${config.incomeGen > 0 ? 'text-green-400' : 'text-red-400'}`}>{config.incomeGen > 0 ? '+' : ''}${config.incomeGen}/d</span>}
+                 {config.incomeGen !== 0 && <span className={\`text-[8px] font-mono leading-none \${config.incomeGen > 0 ? 'text-green-400' : 'text-red-400'}\`}>{config.incomeGen > 0 ? '+' : ''}\${config.incomeGen}/d</span>}
                  {config.popGen > 0 && <span className="text-[8px] font-mono leading-none text-blue-300">+{config.popGen}👤</span>}
               </div>
           )}
@@ -253,7 +255,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className="bg-slate-900/90 text-white p-2 md:p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl flex gap-3 md:gap-6 items-center justify-between w-full md:w-auto mt-1 md:mt-0">
           <div className="flex flex-col pl-2">
             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Treasury</span>
-            <span className="text-xl md:text-2xl font-black text-green-400 font-mono drop-shadow-md leading-none mt-1">${stats.money.toLocaleString()}</span>
+            <span className="text-xl md:text-2xl font-black text-green-400 font-mono drop-shadow-md leading-none mt-1">\${stats.money.toLocaleString()}</span>
           </div>
           <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
           <div className="flex flex-col pl-1">
@@ -268,7 +270,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
           <div className="flex flex-col pr-1 items-end">
              <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Joy</span>
-             <span className={`text-lg md:text-xl font-bold font-mono leading-none mt-1 ${stats.happiness >= 60 ? 'text-green-300' : stats.happiness < 40 ? 'text-red-400' : 'text-yellow-300'}`}>{stats.happiness}%</span>
+             <span className={\`text-lg md:text-xl font-bold font-mono leading-none mt-1 \${stats.happiness >= 60 ? 'text-green-300' : stats.happiness < 40 ? 'text-red-400' : 'text-yellow-300'}\`}>{stats.happiness}%</span>
           </div>
           <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
           <div className="flex flex-col items-center pr-2">
@@ -278,12 +280,12 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         </div>
 
         {/* AI Goal Panel */}
-        <div className={`w-full md:w-80 bg-slate-900/90 text-white rounded-2xl border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)] backdrop-blur-xl overflow-hidden transition-all ${!aiEnabled ? 'opacity-80 grayscale-[0.5]' : ''}`}>
+        <div className={\`w-full md:w-80 bg-slate-900/90 text-white rounded-2xl border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)] backdrop-blur-xl overflow-hidden transition-all \${!aiEnabled ? 'opacity-80 grayscale-[0.5]' : ''}\`}>
           <div className="bg-indigo-900/40 px-3 md:px-4 py-2 flex justify-between items-center border-b border-slate-700">
             <span className="font-bold uppercase text-[10px] md:text-xs tracking-widest flex items-center gap-2">
               {aiEnabled ? (
                 <>
-                  <span className={`w-2 h-2 rounded-full shadow-[0_0_5px_currentColor] ${isGeneratingGoal ? 'bg-yellow-400 text-yellow-400 animate-ping' : 'bg-cyan-400 text-cyan-400 animate-pulse'}`}></span>
+                  <span className={\`w-2 h-2 rounded-full shadow-[0_0_5px_currentColor] \${isGeneratingGoal ? 'bg-yellow-400 text-yellow-400 animate-ping' : 'bg-cyan-400 text-cyan-400 animate-pulse'}\`}></span>
                   AI Advisor
                 </>
               ) : (
@@ -310,7 +312,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] md:text-xs text-yellow-400 font-bold font-mono bg-yellow-900/30 px-2 py-1 rounded-md border border-yellow-600/40 shadow-sm">
-                      +${currentGoal.reward}
+                      +\${currentGoal.reward}
                     </div>
                   </div>
   
@@ -373,7 +375,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className="w-full md:w-80 h-28 md:h-36 bg-slate-900/85 text-white rounded-2xl border border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden relative">
           <div className="bg-slate-800/80 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-slate-700 flex justify-between items-center z-20 shadow-sm">
             <span>City Feed</span>
-            <span className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] ${aiEnabled ? 'bg-red-500 text-red-500 animate-pulse' : 'bg-gray-500'}`}></span>
+            <span className={\`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] \${aiEnabled ? 'bg-red-500 text-red-500 animate-pulse' : 'bg-gray-500'}\`}></span>
           </div>
           
           <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_bottom,rgba(255,255,255,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-20 z-10"></div>
@@ -381,12 +383,12 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           <div ref={newsRef} className="flex-1 overflow-y-auto p-3 space-y-2.5 text-[10px] md:text-xs font-mono scroll-smooth z-20">
             {newsFeed.length === 0 && <div className="text-gray-500 italic text-center mt-6">No active news stream.</div>}
             {newsFeed.map((news) => (
-              <div key={news.id} className={`
+              <div key={news.id} className={\`
                 border-l-2 pl-3 py-1 transition-all animate-fade-in leading-relaxed relative
-                ${news.type === 'positive' ? 'border-emerald-500 text-emerald-200 bg-emerald-900/10' : ''}
-                ${news.type === 'negative' ? 'border-rose-500 text-rose-200 bg-rose-900/10' : ''}
-                ${news.type === 'neutral' ? 'border-blue-400 text-blue-200 bg-blue-900/10' : ''}
-              `}>
+                \${news.type === 'positive' ? 'border-emerald-500 text-emerald-200 bg-emerald-900/10' : ''}
+                \${news.type === 'negative' ? 'border-rose-500 text-rose-200 bg-rose-900/10' : ''}
+                \${news.type === 'neutral' ? 'border-blue-400 text-blue-200 bg-blue-900/10' : ''}
+              \`}>
                 <span className="opacity-50 text-[9px] absolute top-1 right-2">{new Date(Number(news.id.split('.')[0])).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                 <span className="pr-10 block">{news.text}</span>
               </div>
@@ -400,3 +402,6 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 };
 
 export default UIOverlay;
+`;
+
+fs.writeFileSync('components/UIOverlay.tsx', content);

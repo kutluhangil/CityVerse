@@ -59,6 +59,7 @@ function App() {
   const [currentGoal, setCurrentGoal] = useState<AIGoal | null>(null);
   const [isGeneratingGoal, setIsGeneratingGoal] = useState(false);
   const [newsFeed, setNewsFeed] = useState<NewsItem[]>([]);
+  const [demolishedTiles, setDemolishedTiles] = useState<{x: number, y: number, id: number, type?: BuildingType, level?: number, color?: string}[]>([]);
   
   // Refs for accessing state inside intervals without dependencies
   const gridRef = useRef(grid);
@@ -171,7 +172,17 @@ function App() {
         let newWeather = prev.weather;
         if (Math.random() > 0.8) {
            const choices: ('sunny' | 'rainy' | 'snowy')[] = ['sunny', 'sunny', 'rainy', 'snowy'];
-           newWeather = choices[Math.floor(Math.random() * choices.length)];
+           const nextWeather = choices[Math.floor(Math.random() * choices.length)];
+           if (nextWeather !== newWeather) {
+               newWeather = nextWeather;
+               if (newWeather === 'rainy' && Math.random() > 0.3) {
+                   addNewsItem({id: Date.now().toString()+Math.random(), text: "Citizen: 'Make sure to bring an umbrella today!'", type: 'neutral'});
+               } else if (newWeather === 'snowy' && Math.random() > 0.3) {
+                   addNewsItem({id: Date.now().toString()+Math.random(), text: "Citizen: 'The snow is beautiful, but the roads are slippery.'", type: 'neutral'});
+               } else if (newWeather === 'sunny' && prev.weather !== 'sunny') {
+                   addNewsItem({id: Date.now().toString()+Math.random(), text: "Citizen: 'Finally, some clear skies!'", type: 'positive'});
+               }
+           }
         }
         
         let weatherMod = 0;
@@ -212,6 +223,7 @@ function App() {
           let isMet = false;
           if (goal.targetType === 'money' && newStats.money >= goal.targetValue) isMet = true;
           if (goal.targetType === 'population' && newStats.population >= goal.targetValue) isMet = true;
+          if (goal.targetType === 'happiness' && newStats.happiness >= goal.targetValue) isMet = true;
           if (goal.targetType === 'building_count' && goal.buildingType) {
             if ((buildingCounts[goal.buildingType] || 0) >= goal.targetValue) isMet = true;
           }
@@ -247,16 +259,29 @@ function App() {
     const currentTile = currentGrid[y][x];
     const buildingConfig = BUILDINGS[tool];
 
-    // Bulldoze logic
-    if (tool === BuildingType.None) {
+    // Demolish logic
+    if (tool === BuildingType.Demolish) {
       if (currentTile.buildingType !== BuildingType.None) {
-        const demolishCost = 5;
+        const demolishCost = BUILDINGS[BuildingType.Demolish].cost;
         if (currentStats.money >= demolishCost) {
             const newGrid = currentGrid.map(row => [...row]);
-            newGrid[y][x] = { ...currentTile, buildingType: BuildingType.None };
+            // If it reached a high level, maybe give some refund
+            const baseCost = BUILDINGS[currentTile.buildingType]?.cost || 0;
+            const refund = Math.floor(baseCost * 0.5) + (currentTile.level && currentTile.level > 1 ? (currentTile.level - 1) * 25 : 0);
+            newGrid[y][x] = { ...currentTile, buildingType: BuildingType.None, level: 1 };
             setGrid(newGrid);
-            setStats(prev => ({ ...prev, money: prev.money - demolishCost }));
-            // Sound effect here
+            setStats(prev => ({ ...prev, money: prev.money - demolishCost + refund }));
+            
+            // Trigger animation
+            const id = Date.now();
+            setDemolishedTiles(prev => [...prev, {x, y, id, type: currentTile.buildingType, level: currentTile.level, color: BUILDINGS[currentTile.buildingType].color}]);
+            setTimeout(() => {
+                setDemolishedTiles(prev => prev.filter(dt => dt.id !== id));
+            }, 2000);
+
+            if (refund > 0) {
+               addNewsItem({id: Date.now().toString(), text: `Refund of $${refund} received for demolishing upgraded building.`, type: 'positive'});
+            }
         } else {
             addNewsItem({id: Date.now().toString(), text: "Cannot afford demolition costs.", type: 'negative'});
         }
@@ -352,6 +377,7 @@ function App() {
         population={stats.population}
         weather={stats.weather}
         maxCars={maxCars}
+        demolishedTiles={demolishedTiles}
       />
       
       {/* Start Screen Overlay */}
@@ -429,9 +455,38 @@ function App() {
                            Upgrade to {nextName} (${upgradeCost})
                         </button>
                     ) : (
-                        <div className="mt-4 w-full py-3 rounded bg-gray-800 text-gray-400 font-bold uppercase tracking-widest text-sm text-center">
-                           Max Level Reached
-                        </div>
+                        <button
+                          onClick={() => {
+                              // Auto Demolish when max level is reached and clicked
+                              const x = inspectedTile.x;
+                              const y = inspectedTile.y;
+                              const currentTile = grid[y][x];
+                              const demolishCost = BUILDINGS[BuildingType.Demolish].cost;
+                              const refund = (currentTile.level && currentTile.level > 1) ? (currentTile.level - 1) * 20 : 0;
+                              
+                              if (stats.money >= demolishCost) {
+                                  const newGrid = grid.map(row => [...row]);
+                                  newGrid[y][x] = { ...currentTile, buildingType: BuildingType.None, level: 1 };
+                                  setGrid(newGrid);
+                                  setStats(prev => ({ ...prev, money: prev.money - demolishCost + refund }));
+                                  setInspectedTile(null); // close modal
+                                  
+                                  const id = Date.now();
+                                  setDemolishedTiles(prev => [...prev, {x, y, id, type: currentTile.buildingType, level: currentTile.level, color: BUILDINGS[currentTile.buildingType].color}]);
+                                  setTimeout(() => {
+                                      setDemolishedTiles(prev => prev.filter(dt => dt.id !== id));
+                                  }, 2000);
+                                  
+                                  if (refund > 0) {
+                                     addNewsItem({id: Date.now().toString(), text: `Redeveloped a max level building for a $${refund} refund!`, type: 'positive'});
+                                  }
+                              }
+                          }}
+                          disabled={stats.money < BUILDINGS[BuildingType.Demolish].cost}
+                          className="mt-4 w-full py-3 rounded bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest text-sm text-center transition-colors shadow-lg"
+                        >
+                           Redevelop (Demolish)
+                        </button>
                     )}
                  </div>
                );

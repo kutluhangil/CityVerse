@@ -22,7 +22,7 @@ const goalSchema = {
     },
     targetType: {
       type: Type.STRING,
-      enum: ['population', 'money', 'building_count'],
+      enum: ['population', 'money', 'building_count', 'happiness'],
       description: "The metric to track.",
     },
     targetValue: {
@@ -54,6 +54,7 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
   const context = `
     Current City Stats:
     Day: ${stats.day}
+    Happiness: ${stats.happiness}%
     Money: $${stats.money}
     Population: ${stats.population}
     Buildings: ${JSON.stringify(counts)}
@@ -62,7 +63,7 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
     )}
   `;
 
-  const prompt = `You are the AI City Advisor for a simulation game. Based on the current city stats, generate a challenging but achievable short-term goal for the player to help the city grow. Return JSON.`;
+  const prompt = `You are the AI City Advisor. Generate a varied, creative, and engaging short-term goal for the player. Mix it up! Sometimes focus on citizen happiness, sometimes on specific building types (like parks for aesthetics, or industrial for jobs), or standard population/money goals. Make it achievable based on current money and income. Return JSON.`;
 
   try {
     const response = await ai.models.generateContent({
