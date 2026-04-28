@@ -55,6 +55,7 @@ function App() {
   const [maxCars, setMaxCars] = useState(6);
   const [inspectedTile, setInspectedTile] = useState<{x: number, y: number} | null>(null);
   const [gameSpeed, setGameSpeed] = useState(1);
+  const [globalTime, setGlobalTime] = useState(0);
   
   // --- AI State ---
   const [currentGoal, setCurrentGoal] = useState<AIGoal | null>(null);
@@ -130,6 +131,7 @@ function App() {
     if (!gameStarted) return;
 
     const intervalId = setInterval(() => {
+      setGlobalTime(prev => prev + 0.1 * gameSpeed);
       // 1. Calculate income/pop gen
       let dailyIncome = 0;
       let dailyPopGrowth = 0;
@@ -191,7 +193,31 @@ function App() {
         if (newWeather === 'snowy') weatherMod = -2;
         if (newWeather === 'sunny') weatherMod = 2;
 
-        let targetHappiness = 50 + varietyBonus + Math.min(30, parksPerCapitaBonus) + (comCount * 2) - (indCount * 4) + weatherMod;
+        let localizedPollutionPenalty = 0;
+        gridRef.current.forEach((row, rY) => {
+            row.forEach((tile, rX) => {
+                if (tile.buildingType === BuildingType.Residential) {
+                    let nearbyInd = 0;
+                    // Check 2-tile radius
+                    for (let dy = -2; dy <= 2; dy++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const ny = rY + dy;
+                            const nx = rX + dx;
+                            if (ny >= 0 && ny < GRID_SIZE && nx >= 0 && nx < GRID_SIZE) {
+                                if (gridRef.current[ny][nx].buildingType === BuildingType.Industrial) {
+                                    nearbyInd += (gridRef.current[ny][nx].level || 1);
+                                }
+                            }
+                        }
+                    }
+                    localizedPollutionPenalty += nearbyInd * 5; 
+                }
+            });
+        });
+
+        const pollutionImpact = resCount > 0 ? (localizedPollutionPenalty / resCount) : 0;
+
+        let targetHappiness = 50 + varietyBonus + Math.min(30, parksPerCapitaBonus) + (comCount * 2) - pollutionImpact + weatherMod;
         if (newPop > 0 && resCount > 0 && newPop >= maxPop * 0.9) {
            targetHappiness -= 15; // overcrowding
         }
@@ -379,6 +405,7 @@ function App() {
         weather={stats.weather}
         maxCars={maxCars}
         demolishedTiles={demolishedTiles}
+        gameSpeed={gameSpeed}
       />
       
       {/* Start Screen Overlay */}

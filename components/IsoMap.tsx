@@ -1301,15 +1301,17 @@ const HeatmapOverlay = ({ grid, mode }: { grid: Grid, mode: string }) => {
   );
 };
 
-const DayNightSystem = ({ weather }: { weather: string }) => {
+const DayNightSystem = ({ weather, gameSpeed = 1 }: { weather: string, gameSpeed?: number }) => {
     const dirLightRef = useRef<THREE.DirectionalLight>(null);
     const ambientLightRef = useRef<THREE.AmbientLight>(null);
     const sunRef = useRef<THREE.Mesh>(null);
     const moonRef = useRef<THREE.Mesh>(null);
     const skyRef = useRef<any>(null);
+    const accumulatedTime = useRef(0);
     
-    useFrame((state) => {
-        const time = state.clock.elapsedTime * 0.05; // Day cycle lasts around 125 seconds
+    useFrame((state, delta) => {
+        accumulatedTime.current += delta * 0.05 * gameSpeed;
+        const time = accumulatedTime.current;
         const sunAngle = time % (Math.PI * 2);
         
         if (dirLightRef.current) {
@@ -1818,9 +1820,10 @@ interface IsoMapProps {
   weather?: string;
   maxCars?: number;
   demolishedTiles?: {x: number, y: number, id: number, type?: BuildingType, level?: number, color?: string}[];
+  gameSpeed?: number;
 }
 
-const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny', maxCars = 6, demolishedTiles = [] }) => {
+const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny', maxCars = 6, demolishedTiles = [], gameSpeed = 1 }) => {
   const [hoveredTile, setHoveredTile] = useState<{x: number, y: number} | null>(null);
 
   const [dataMode, setDataMode] = useState<string>('none');
@@ -1855,7 +1858,7 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
           target={[0,-0.5,0]}
         />
 
-        <DayNightSystem weather={weather} />
+        <DayNightSystem weather={weather} gameSpeed={gameSpeed} />
         <Environment preset="city" />
         
 
@@ -1876,7 +1879,9 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
                     weather={weather}
                     onHover={handleHover}
                     onLeave={handleLeave}
-                    onClick={onTileClick}
+                    onClick={(x, y) => {
+                      if (dataMode === 'none') onTileClick(x, y);
+                    }}
                 />
                 
                 {/* Building visual - apply world position to group to align with ground tile */}
