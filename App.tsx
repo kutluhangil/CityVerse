@@ -54,6 +54,7 @@ function App() {
   const [selectedTool, setSelectedTool] = useState<BuildingType>(BuildingType.Road);
   const [maxCars, setMaxCars] = useState(6);
   const [inspectedTile, setInspectedTile] = useState<{x: number, y: number} | null>(null);
+  const [gameSpeed, setGameSpeed] = useState(1);
   
   // --- AI State ---
   const [currentGoal, setCurrentGoal] = useState<AIGoal | null>(null);
@@ -239,10 +240,10 @@ function App() {
       // 4. Trigger news
       fetchNews();
 
-    }, TICK_RATE_MS);
+    }, TICK_RATE_MS / gameSpeed);
 
     return () => clearInterval(intervalId);
-  }, [fetchNews, gameStarted]);
+  }, [fetchNews, gameStarted, gameSpeed]);
 
 
   // --- Interaction Logic ---
@@ -505,6 +506,8 @@ function App() {
           aiEnabled={aiEnabled}
           maxCars={maxCars}
           setMaxCars={setMaxCars}
+          gameSpeed={gameSpeed}
+          setGameSpeed={setGameSpeed}
         />
         </>
       )}

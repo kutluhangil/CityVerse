@@ -4,7 +4,8 @@
 */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree, ThreeElements } from '@react-three/fiber';
-import { MapControls, Environment, SoftShadows, Instance, Instances, Float, useTexture, Outlines, OrthographicCamera } from '@react-three/drei';
+import { MapControls, Environment, SoftShadows, Instance, Instances, Float, useTexture, Outlines, OrthographicCamera, Sky, Html } from '@react-three/drei';
+import { EffectComposer, Bloom, N8AO } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { MathUtils } from 'three';
 import { Grid, BuildingType, TileData } from '../types';
@@ -27,6 +28,7 @@ const getRandomRange = (min: number, max: number) => Math.random() * (max - min)
 
 // Shared Geometries
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+const planeGeo = new THREE.PlaneGeometry(1, 1);
 const cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
 const coneGeo = new THREE.ConeGeometry(1, 1, 4);
 const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
@@ -93,6 +95,8 @@ interface BuildingMeshProps {
 // Material Cache to massively reduce draw calls and memory overhead
 const materialCache: Record<string, THREE.MeshStandardMaterial> = {};
 
+
+// We'll apply bumpMap or slightly adjust standard materials
 const getCachedMaterial = (baseColor: string, hash: number, type: 'main' | 'accent' | 'roof', opacity: number, transparent: boolean, weather: string, level: number = 1, bType?: BuildingType) => {
     const bucket = Math.floor(hash * 5);
     const key = `${baseColor}-${bucket}-${type}-${opacity}-${transparent}-${weather}-${level}-${bType}`;
@@ -185,6 +189,64 @@ const Tree = ({ x, y, i, scale = 1, treeColor, isSphere = false, weather = 'sunn
     );
 };
 
+
+const FloatingIncome = ({ type }: { type: BuildingType }) => {
+    const [pop, setPop] = useState(true);
+    useEffect(() => {
+        const timeout = setTimeout(() => setPop(false), 2000);
+        return () => clearTimeout(timeout);
+    }, []);
+    
+    if (!pop) return null;
+
+    let text = "";
+    let color = "";
+    if (type === BuildingType.Residential) { text = "+2 👤"; color = "#4ade80"; }
+    else if (type === BuildingType.Commercial) { text = "+$50 💰"; color = "#fef08a"; }
+    else if (type === BuildingType.Industrial) { text = "+$100 🏭"; color = "#f97316"; }
+    else if (type === BuildingType.Park || type === BuildingType.ParkFountain || type === BuildingType.ParkPlayground) { text = "+😊"; color = "#60a5fa"; }
+
+    if (!text) return null;
+
+    return (
+        <Html position={[0, 1.5, 0]} center style={{ pointerEvents: 'none', zIndex: 10 }}>
+            <div className="animate-bounce font-bold drop-shadow-md whitespace-nowrap" style={{ color: color, fontSize: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {text}
+            </div>
+        </Html>
+    );
+};
+
+// --- Fountain Water ---
+const FountainWater = () => {
+    const waterRef = useRef<THREE.Mesh>(null);
+    useFrame((state) => {
+        if (!waterRef.current) return;
+        const geo = waterRef.current.geometry as THREE.CylinderGeometry;
+        const pos = geo.attributes.position;
+        const time = state.clock.elapsedTime * 2;
+        // Super simple ripple effect on cylinder top vertices
+        for (let i = 0; i < pos.count; i++) {
+            const y = pos.getY(i);
+            if (y > 0) { // Top vertices
+                const x = pos.getX(i);
+                const z = pos.getZ(i);
+                const r = Math.sqrt(x*x + z*z);
+                const newY = 0.5 + Math.sin(r * 20 - time) * 0.05;
+                pos.setY(i, newY);
+            }
+        }
+        pos.needsUpdate = true;
+    });
+
+    return (
+        <mesh ref={waterRef} castShadow position={[0, 0.08, 0]} scale={[0.45, 0.05, 0.45]}>
+             <cylinderGeometry args={[1, 1, 1, 16, 2]} />
+             <meshPhysicalMaterial color="#60a5fa" transmission={0.9} opacity={1} transparent roughness={0.1} ior={1.33} metalness={0.1} />
+        </mesh>
+    );
+};
+
 const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, transparent = false, level = 1, weather = 'sunny', isDamaged = false }: BuildingMeshProps) => {
   const hash = getHash(x, y);
   const groupRef = useRef<THREE.Group>(null);
@@ -202,6 +264,12 @@ const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, tra
               return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
           };
           groupRef.current.scale.y = progress < 1 ? Math.max(0.01, ez(progress)) : 1;
+          // Add a little spring bounce
+          if (progress > 0.8 && progress < 1) {
+              groupRef.current.scale.y = 1 + Math.sin((progress - 0.8) * Math.PI * 5) * 0.15;
+          }
+          // Add a little spring bounce
+
       }
   });
   const variant = Math.floor(hash * 100); // 0-99
@@ -331,6 +399,9 @@ const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, tra
                   ))}
                   <mesh {...commonProps} material={accentMat} geometry={boxGeo} position={[0, height + 0.1, 0]} scale={[0.5, 0.2, 0.5]} />
                   {hasAntenna && <mesh {...commonProps} material={new THREE.MeshStandardMaterial({color: '#9ca3af', opacity, transparent})} geometry={cylinderGeo} position={[0, height + 0.5, 0]} scale={[0.02, 0.8, 0.02]} />}
+                  {/* Billboard Sign */}
+                  <mesh {...commonProps} material={new THREE.MeshStandardMaterial({color: '#222222', opacity, transparent})} geometry={boxGeo} position={[0, height + 0.2, 0.2]} scale={[0.4, 0.2, 0.05]} />
+                  <mesh {...commonProps} material={new THREE.MeshStandardMaterial({color: '#3b82f6', emissive: '#3b82f6', emissiveIntensity: 2})} geometry={planeGeo} position={[0, height + 0.2, 0.23]} scale={[0.35, 0.15, 1]} />
                 </>
               );
             } else if (variant < 70) {
@@ -343,6 +414,8 @@ const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, tra
                      <WindowBlock key={i} position={[0, 0.3 + (i * 0.8), 0.41]} scale={[0.8, 0.4, 0.05]} />
                   ))}
                   <mesh {...commonProps} material={new THREE.MeshStandardMaterial({ color: awningColor, opacity, transparent })} geometry={boxGeo} position={[0, 0.55 * level, 0.5]} scale={[0.9, 0.1, 0.2]} rotation={[Math.PI/6, 0, 0]} />
+                  {/* Shop Sign */}
+                  <mesh {...commonProps} material={new THREE.MeshStandardMaterial({color: '#fcd34d', emissive: '#fcd34d', emissiveIntensity: 1})} geometry={boxGeo} position={[0, 0.8 * level + 0.1, 0]} scale={[0.6, 0.2, 0.1]} />
                 </>
               );
             } else {
@@ -451,7 +524,9 @@ const ProceduralBuilding = React.memo(({ type, baseColor, x, y, opacity = 1, tra
                 
                 {/* Fountain Base */}
                 <mesh castShadow receiveShadow material={new THREE.MeshStandardMaterial({color: '#cbd5e1'})} geometry={cylinderGeo} position={[0, 0.05, 0]} scale={[0.5, 0.1, 0.5]} />
-                <mesh castShadow material={new THREE.MeshStandardMaterial({color: '#3b82f6', roughness: 0.1, transparent: true, opacity: 0.8})} geometry={cylinderGeo} position={[0, 0.08, 0]} scale={[0.45, 0.05, 0.45]} />
+                
+                <FountainWater />
+
                 
                 {/* Center statue/pillar */}
                 <mesh castShadow material={new THREE.MeshStandardMaterial({color: '#e2e8f0'})} geometry={cylinderGeo} position={[0, 0.25, 0]} scale={[0.1, 0.4, 0.1]} />
@@ -1231,6 +1306,7 @@ const DayNightSystem = ({ weather }: { weather: string }) => {
     const ambientLightRef = useRef<THREE.AmbientLight>(null);
     const sunRef = useRef<THREE.Mesh>(null);
     const moonRef = useRef<THREE.Mesh>(null);
+    const skyRef = useRef<any>(null);
     
     useFrame((state) => {
         const time = state.clock.elapsedTime * 0.05; // Day cycle lasts around 125 seconds
@@ -1261,8 +1337,8 @@ const DayNightSystem = ({ weather }: { weather: string }) => {
             dirLightRef.current.intensity = dayBlend * maxIntensity;
             
             const nightBlend = 1 - dayBlend;
-            windowMaterial.emissiveIntensity = nightBlend;
-            streetLampMaterial.emissiveIntensity = nightBlend > 0.1 ? nightBlend * (1.5 + Math.sin(time * 15) * Math.random() * 0.2 + (Math.random() > 0.95 ? -0.5 : 0)) : 0;
+            windowMaterial.emissiveIntensity = nightBlend * 2.0;
+            streetLampMaterial.emissiveIntensity = nightBlend > 0.1 ? nightBlend * (3.0 + Math.sin(time * 15) * Math.random() * 0.5) : 0;
             if (nightBlend > 0.5) streetLampMaterial.color.setHex(0xfef08a);
             else streetLampMaterial.color.setHex(0x9ca3af);
             
@@ -1278,11 +1354,25 @@ const DayNightSystem = ({ weather }: { weather: string }) => {
                 const nightColor = new THREE.Color(0x1e1b4b);
                 ambientLightRef.current.color.lerpColors(nightColor, dayColor, dayBlend);
             }
+            if (skyRef.current) {
+                // Update sky sun position to match our directional light
+                skyRef.current.material.uniforms.sunPosition.value.copy(dirLightRef.current.position);
+                
+                // Adjust rayleigh (scattering) at dawn/dusk for orange/red colors
+                // dayBlend is 0 at night, 1 at midday
+                // we want high scattering when dayBlend is between 0.1 and 0.4
+                let scattering = 0.5;
+                if (dayBlend > 0 && dayBlend < 0.6) {
+                    scattering = 2.0 - Math.abs(dayBlend - 0.3) * 5; // peaks at 2.0
+                }
+                skyRef.current.material.uniforms.rayleigh.value = Math.max(0.5, scattering);
+            }
         }
     });
 
     return (
         <group>
+            <Sky ref={skyRef} distance={450000} sunPosition={[0, 1, 0]} inclination={0} azimuth={0.25} rayleigh={0.5} turbidity={0.1} />
             <ambientLight ref={ambientLightRef} intensity={0.5} color="#cceeff" />
             <directionalLight
                 ref={dirLightRef}
@@ -1298,13 +1388,129 @@ const DayNightSystem = ({ weather }: { weather: string }) => {
     );
 };
 
+// --- Pedestrians & Birds ---
+const PedestrianSystem = ({ grid, maxPeds }: { grid: Grid, maxPeds: number }) => {
+    const peds = useMemo(() => {
+        let roads = [];
+        grid.forEach((row, y) => row.forEach((tile, x) => {
+            if (tile.buildingType === BuildingType.Road || tile.buildingType === BuildingType.Park || tile.buildingType === BuildingType.ParkPlayground) {
+                roads.push({x, y});
+            }
+        }));
+        if (roads.length === 0) return [];
+
+        return Array.from({length: maxPeds}).map(() => {
+            const r = roads[Math.floor(Math.random() * roads.length)];
+            const [wx, _, wz] = gridToWorld(r.x, r.y);
+            return {
+                id: Math.random(),
+                x: wx + (Math.random() - 0.5) * 0.6,
+                z: wz + (Math.random() - 0.5) * 0.6,
+                targetX: wx + (Math.random() - 0.5) * 0.8,
+                targetZ: wz + (Math.random() - 0.5) * 0.8,
+                speed: 0.2 + Math.random() * 0.3,
+                color: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)]
+            };
+        });
+    }, [grid, maxPeds]);
+
+    const instancesRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+
+    useFrame((state, delta) => {
+        if (!instancesRef.current) return;
+        peds.forEach((ped, i) => {
+            const dx = ped.targetX - ped.x;
+            const dz = ped.targetZ - ped.z;
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist < 0.05) {
+                // Pick new target nearby
+                ped.targetX = ped.x + (Math.random() - 0.5) * 1.5;
+                ped.targetZ = ped.z + (Math.random() - 0.5) * 1.5;
+            } else {
+                ped.x += (dx / dist) * ped.speed * delta;
+                ped.z += (dz / dist) * ped.speed * delta;
+            }
+            
+            dummy.position.set(ped.x, -0.2, ped.z);
+            // Bobbing animation
+            dummy.position.y = -0.2 + Math.abs(Math.sin(state.clock.elapsedTime * 10 + i)) * 0.05;
+            // Face direction
+            dummy.rotation.y = Math.atan2(dx, dz);
+            dummy.updateMatrix();
+            instancesRef.current.setMatrixAt(i, dummy.matrix);
+            
+            // Set color once
+            if (state.clock.elapsedTime < 0.5) {
+                instancesRef.current.setColorAt(i, new THREE.Color(ped.color));
+                instancesRef.current.instanceColor.needsUpdate = true;
+            }
+        });
+        instancesRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    if (peds.length === 0) return null;
+    return (
+        <instancedMesh ref={instancesRef} args={[new THREE.BoxGeometry(0.06, 0.15, 0.06), new THREE.MeshStandardMaterial(), peds.length]} castShadow raycast={() => null}>
+        </instancedMesh>
+    );
+};
+
+const BirdSystem = () => {
+    const birds = useMemo(() => Array.from({length: 20}).map(() => ({
+        id: Math.random(),
+        x: (Math.random() - 0.5) * 40,
+        y: 8 + Math.random() * 4,
+        z: (Math.random() - 0.5) * 40,
+        speed: 2 + Math.random() * 2,
+        angle: Math.random() * Math.PI * 2,
+        wingPhase: Math.random() * Math.PI * 2,
+    })), []);
+
+    const groupRef = useRef<THREE.Group>(null);
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
+        birds.forEach((bird, i) => {
+            bird.x += Math.cos(bird.angle) * bird.speed * delta;
+            bird.z += Math.sin(bird.angle) * bird.speed * delta;
+            
+            // wrap around
+            if (bird.x > 30) bird.x = -30;
+            if (bird.x < -30) bird.x = 30;
+            if (bird.z > 30) bird.z = -30;
+            if (bird.z < -30) bird.z = 30;
+
+            bird.angle += (Math.random() - 0.5) * delta * 0.5;
+
+            const child = groupRef.current.children[i];
+            if (child) {
+                child.position.set(bird.x, bird.y + Math.sin(state.clock.elapsedTime + i)*0.5, bird.z);
+                child.rotation.y = -bird.angle;
+                
+                // Wing flap animation (scaling the box)
+                child.scale.x = 1 + Math.sin(state.clock.elapsedTime * 15 + bird.wingPhase) * 0.5;
+            }
+        });
+    });
+
+    return (
+        <group ref={groupRef}>
+            {birds.map(b => (
+                <mesh key={b.id} material={new THREE.MeshBasicMaterial({color: 'black'})}>
+                    <boxGeometry args={[0.2, 0.05, 0.1]} />
+                </mesh>
+            ))}
+        </group>
+    );
+};
+
 const EnvironmentEffects = ({ weather, grid }: { weather: string, grid: Grid }) => {
     return (
         <group raycast={() => null}>
              {/* Clouds */}
-            <Cloud position={[-12, 8, 4]} scale={1.5} speed={0.3} />
-            <Cloud position={[5, 9, -8]} scale={1.2} speed={0.5} />
-            <Cloud position={[15, 7, 10]} scale={1.8} speed={0.2} />
+            
+            
+            
             
             {/* Birds (Only spawn if not raining/snowing) */}
             {weather === 'sunny' && (
@@ -1316,9 +1522,9 @@ const EnvironmentEffects = ({ weather, grid }: { weather: string, grid: Grid }) 
             )}
 
             {/* Weather Particles */}
-            <WeatherParticles type={weather} grid={grid} />
+            
             {/* Drifting fog effect */}
-            {weather !== 'sunny' && <FogOverlay weather={weather} />}
+            
 
             {/* Water */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.6, 0]} receiveShadow>
@@ -1651,6 +1857,7 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
 
         <DayNightSystem weather={weather} />
         <Environment preset="city" />
+        
 
         <EnvironmentEffects weather={weather} grid={grid} />
 
@@ -1691,6 +1898,8 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
           {/* Visual Elements - disable pointer events */}
           <group raycast={() => null}>
             <TrafficSystem grid={grid} maxCars={maxCars} weather={weather} />
+           <PedestrianSystem grid={grid} maxPeds={Math.min(100, Math.max(10, population / 2))} />
+           <BirdSystem />
             <HeatmapOverlay grid={grid} mode={dataMode} />
             <GridBorder />
             {demolishedTiles.map(dt => (
@@ -1726,7 +1935,14 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
           </group>
         </group>
         
-        <SoftShadows size={10} samples={8} />
+        <SoftShadows size={15} samples={10} focus={0.5} />
+        
+        <EffectComposer autoClear={false}>
+          {/* Ambient Occlusion for better crevices/shadows */}
+          <N8AO halfRes color="black" aoRadius={1.5} intensity={2} />
+          {/* Subtle Bloom for glowing elements without washing out */}
+          <Bloom luminanceThreshold={1.5} mipmapBlur luminanceSmoothing={0.025} intensity={1.2} />
+        </EffectComposer>
       </Canvas>
 
       {/* Heatmap UI */}

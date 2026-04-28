@@ -16,6 +16,8 @@ interface UIOverlayProps {
   onClaimReward: () => void;
   isGeneratingGoal: boolean;
   aiEnabled: boolean;
+  gameSpeed: number;
+  setGameSpeed: (speed: number) => void;
   maxCars: number;
   setMaxCars: (n: number) => void;
 }
@@ -264,6 +266,13 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           <div className="flex flex-col pr-1 items-end">
              <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Day</span>
              <span className="text-lg md:text-xl font-bold text-white font-mono leading-none mt-1">{stats.day}</span>
+          </div>
+          <div className="flex flex-row items-center gap-1">
+             {[1, 2, 3].map(speed => (
+                 <button key={speed} onClick={() => setGameSpeed(speed)} className={`px-2 py-1 text-xs rounded font-bold ${gameSpeed === speed ? 'bg-blue-500 text-white' : 'bg-slate-700 text-gray-400'}`}>
+                     {speed}x
+                 </button>
+             ))}
           </div>
           <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
           <div className="flex flex-col pr-1 items-end">
