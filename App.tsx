@@ -406,6 +406,7 @@ function App() {
         maxCars={maxCars}
         demolishedTiles={demolishedTiles}
         gameSpeed={gameSpeed}
+        globalTime={globalTime}
       />
       
       {/* Start Screen Overlay */}

@@ -2,10 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BuildingType, CityStats, AIGoal, NewsItem } from '../types';
 import { BUILDINGS } from '../constants';
-import { Sun, CloudRain, CloudSnow, Search } from 'lucide-react';
+import { Sun, CloudRain, CloudSnow, Search, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface UIOverlayProps {
   stats: CityStats;
@@ -235,9 +235,13 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   isGeneratingGoal,
   aiEnabled,
   maxCars,
-  setMaxCars
+  setMaxCars,
+  gameSpeed,
+  setGameSpeed
 }) => {
   const newsRef = useRef<HTMLDivElement>(null);
+  const [showGoalMobile, setShowGoalMobile] = useState(false);
+  const [showNewsMobile, setShowNewsMobile] = useState(false);
 
   useEffect(() => {
     if (newsRef.current) {
@@ -252,7 +256,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       <div className="flex flex-col md:flex-row md:justify-between md:items-start pointer-events-auto gap-3 w-full max-w-full">
         
         {/* Stats */}
-        <div className="bg-slate-900/90 text-white p-2 md:p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl flex gap-3 md:gap-6 items-center justify-between w-full md:w-auto mt-1 md:mt-0">
+        <div className="bg-slate-900/90 text-white p-2 md:p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl flex gap-3 md:gap-6 items-center justify-start md:justify-between w-full md:w-auto mt-1 md:mt-0 overflow-x-auto no-scrollbar">
           <div className="flex flex-col pl-2">
             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Treasury</span>
             <span className="text-xl md:text-2xl font-black text-green-400 font-mono drop-shadow-md leading-none mt-1">${stats.money.toLocaleString()}</span>
@@ -288,7 +292,10 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 
         {/* AI Goal Panel */}
         <div className={`w-full md:w-80 bg-slate-900/90 text-white rounded-2xl border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)] backdrop-blur-xl overflow-hidden transition-all ${!aiEnabled ? 'opacity-80 grayscale-[0.5]' : ''}`}>
-          <div className="bg-indigo-900/40 px-3 md:px-4 py-2 flex justify-between items-center border-b border-slate-700">
+          <div 
+             className="bg-indigo-900/40 px-3 md:px-4 py-2 flex justify-between items-center border-b border-slate-700 cursor-pointer md:cursor-default"
+             onClick={() => setShowGoalMobile(!showGoalMobile)}
+          >
             <span className="font-bold uppercase text-[10px] md:text-xs tracking-widest flex items-center gap-2">
               {aiEnabled ? (
                 <>
@@ -302,10 +309,15 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                 </>
               )}
             </span>
-            {isGeneratingGoal && aiEnabled && <span className="text-[10px] animate-pulse text-yellow-300 font-mono">Thinking...</span>}
+            <div className="flex items-center gap-2">
+              {isGeneratingGoal && aiEnabled && <span className="text-[10px] animate-pulse text-yellow-300 font-mono">Thinking...</span>}
+              <div className="md:hidden">
+                 {showGoalMobile ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+            </div>
           </div>
           
-          <div className="p-3 md:p-4">
+          <div className={`p-3 md:p-4 ${!showGoalMobile ? 'hidden md:block' : 'block'}`}>
             {aiEnabled ? (
               currentGoal ? (
                 <>
@@ -379,15 +391,23 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         </div>
 
         {/* News Feed */}
-        <div className="w-full md:w-80 h-28 md:h-36 bg-slate-900/85 text-white rounded-2xl border border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden relative">
-          <div className="bg-slate-800/80 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-slate-700 flex justify-between items-center z-20 shadow-sm">
+        <div className={`w-full md:w-80 bg-slate-900/85 text-white rounded-2xl border border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden relative transition-all ${!showNewsMobile ? 'h-auto md:h-36' : 'h-36 md:h-36'}`}>
+          <div 
+             className="bg-slate-800/80 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-slate-700 flex justify-between items-center z-20 shadow-sm cursor-pointer md:cursor-default"
+             onClick={() => setShowNewsMobile(!showNewsMobile)}
+          >
             <span>City Feed</span>
-            <span className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] ${aiEnabled ? 'bg-red-500 text-red-500 animate-pulse' : 'bg-gray-500'}`}></span>
+            <div className="flex items-center gap-2">
+               <span className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] ${aiEnabled ? 'bg-red-500 text-red-500 animate-pulse' : 'bg-gray-500'}`}></span>
+               <div className="md:hidden">
+                 {showNewsMobile ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+               </div>
+            </div>
           </div>
           
           <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_bottom,rgba(255,255,255,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-20 z-10"></div>
           
-          <div ref={newsRef} className="flex-1 overflow-y-auto p-3 space-y-2.5 text-[10px] md:text-xs font-mono scroll-smooth z-20">
+          <div ref={newsRef} className={`flex-1 overflow-y-auto p-3 space-y-2.5 text-[10px] md:text-xs font-mono scroll-smooth z-20 ${!showNewsMobile ? 'hidden md:block' : 'block'}`}>
             {newsFeed.length === 0 && <div className="text-gray-500 italic text-center mt-6">No active news stream.</div>}
             {newsFeed.map((news) => (
               <div key={news.id} className={`
