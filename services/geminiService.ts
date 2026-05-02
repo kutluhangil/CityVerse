@@ -1,14 +1,36 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIGoal, BuildingType, CityStats, Grid, NewsItem } from "../types";
 import { BUILDINGS } from "../constants";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY;
+let aiClient: GoogleGenAI | null = null;
+let hasWarnedAboutMissingApiKey = false;
 
-const modelId = 'gemini-2.5-flash';
+const getAiClient = () => {
+  if (!apiKey) {
+    if (!hasWarnedAboutMissingApiKey) {
+      console.warn(
+        "Gemini API key is not configured. AI features are disabled.",
+      );
+      hasWarnedAboutMissingApiKey = true;
+    }
+    return null;
+  }
+
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+
+  return aiClient;
+};
+
+export const isGeminiConfigured = Boolean(apiKey);
+
+const modelId = "gemini-2.5-flash";
 
 // --- Goal Generation ---
 
@@ -18,11 +40,12 @@ const goalSchema = {
   properties: {
     description: {
       type: Type.STRING,
-      description: "A short, creative description of the goal from the perspective of city council or citizens.",
+      description:
+        "A short, creative description of the goal from the perspective of city council or citizens.",
     },
     targetType: {
       type: Type.STRING,
-      enum: ['population', 'money', 'building_count', 'happiness'],
+      enum: ["population", "money", "building_count", "happiness"],
       description: "The metric to track.",
     },
     targetValue: {
@@ -31,7 +54,13 @@ const goalSchema = {
     },
     buildingType: {
       type: Type.STRING,
-      enum: [BuildingType.Residential, BuildingType.Commercial, BuildingType.Industrial, BuildingType.Park, BuildingType.Road],
+      enum: [
+        BuildingType.Residential,
+        BuildingType.Commercial,
+        BuildingType.Industrial,
+        BuildingType.Park,
+        BuildingType.Road,
+      ],
       description: "Required if targetType is building_count.",
     },
     reward: {
@@ -39,15 +68,19 @@ const goalSchema = {
       description: "Monetary reward for completion.",
     },
   },
-  required: ['description', 'targetType', 'targetValue', 'reward'],
+  required: ["description", "targetType", "targetValue", "reward"],
 };
 
-export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AIGoal | null> => {
-  // @google/genai-api-key-fix: The API key must be obtained exclusively from the environment variable `process.env.API_KEY`. Do not add checks for its existence.
+export const generateCityGoal = async (
+  stats: CityStats,
+  grid: Grid,
+): Promise<AIGoal | null> => {
+  const ai = getAiClient();
+  if (!ai) return null;
 
   // Count buildings
   const counts: Record<string, number> = {};
-  grid.flat().forEach(tile => {
+  grid.flat().forEach((tile) => {
     counts[tile.buildingType] = (counts[tile.buildingType] || 0) + 1;
   });
 
@@ -59,7 +92,14 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
     Population: ${stats.population}
     Buildings: ${JSON.stringify(counts)}
     Building Costs/Stats: ${JSON.stringify(
-      Object.values(BUILDINGS).filter(b => b.type !== BuildingType.None).map(b => ({type: b.type, cost: b.cost, pop: b.popGen, income: b.incomeGen}))
+      Object.values(BUILDINGS)
+        .filter((b) => b.type !== BuildingType.None)
+        .map((b) => ({
+          type: b.type,
+          cost: b.cost,
+          pop: b.popGen,
+          income: b.incomeGen,
+        })),
     )}
   `;
 
@@ -79,19 +119,24 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
 
     // @google/genai-response-text-fix: Access the `text` property directly from the response.
     if (response.text) {
-      const goalData = JSON.parse(response.text) as Omit<AIGoal, 'completed'>;
+      const goalData = JSON.parse(response.text) as Omit<AIGoal, "completed">;
       return { ...goalData, completed: false };
     }
   } catch (error: any) {
-    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {
-       return {
-          description: "Build 5 new Residential Zones to expand our city!",
-          targetType: "building_count",
-          targetValue: 5,
-          buildingType: BuildingType.Residential,
-          reward: 500,
-          completed: false
-       };
+    if (
+      error?.status === 429 ||
+      error?.message?.includes("429") ||
+      error?.message?.includes("quota") ||
+      error?.status === "RESOURCE_EXHAUSTED"
+    ) {
+      return {
+        description: "Build 5 new Residential Zones to expand our city!",
+        targetType: "building_count",
+        targetValue: 5,
+        buildingType: BuildingType.Residential,
+        reward: 500,
+        completed: false,
+      };
     }
     console.error("Error generating goal:", error);
   }
@@ -104,17 +149,26 @@ export const generateCityGoal = async (stats: CityStats, grid: Grid): Promise<AI
 const newsSchema = {
   type: Type.OBJECT,
   properties: {
-    text: { type: Type.STRING, description: "A one-sentence news headline representing life in the city." },
-    type: { type: Type.STRING, enum: ['positive', 'negative', 'neutral'] },
+    text: {
+      type: Type.STRING,
+      description:
+        "A one-sentence news headline representing life in the city.",
+    },
+    type: { type: Type.STRING, enum: ["positive", "negative", "neutral"] },
   },
-  required: ['text', 'type'],
+  required: ["text", "type"],
 };
 
-export const generateNewsEvent = async (stats: CityStats, recentAction: string | null): Promise<NewsItem | null> => {
-  // @google/genai-api-key-fix: The API key must be obtained exclusively from the environment variable `process.env.API_KEY`. Do not add checks for its existence.
+export const generateNewsEvent = async (
+  stats: CityStats,
+  recentAction: string | null,
+): Promise<NewsItem | null> => {
+  const ai = getAiClient();
+  if (!ai) return null;
 
-  const context = `City Stats - Pop: ${stats.population}, Money: ${stats.money}, Day: ${stats.day}. ${recentAction ? `Recent Action: ${recentAction}` : ''}`;
-  const prompt = "Generate a very short, isometric-sim-city style news headline based on the city state. Can be funny, cynical, or celebratory.";
+  const context = `City Stats - Pop: ${stats.population}, Money: ${stats.money}, Day: ${stats.day}. ${recentAction ? `Recent Action: ${recentAction}` : ""}`;
+  const prompt =
+    "Generate a very short, isometric-sim-city style news headline based on the city state. Can be funny, cynical, or celebratory.";
 
   try {
     const response = await ai.models.generateContent({
@@ -138,12 +192,17 @@ export const generateNewsEvent = async (stats: CityStats, recentAction: string |
       };
     }
   } catch (error: any) {
-    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {
-       return {
-         id: Date.now().toString() + Math.random(),
-         text: "Citizens appreciate the steady growth of the city.",
-         type: 'positive'
-       };
+    if (
+      error?.status === 429 ||
+      error?.message?.includes("429") ||
+      error?.message?.includes("quota") ||
+      error?.status === "RESOURCE_EXHAUSTED"
+    ) {
+      return {
+        id: Date.now().toString() + Math.random(),
+        text: "Citizens appreciate the steady growth of the city.",
+        type: "positive",
+      };
     }
     console.error("Error generating news:", error);
   }
