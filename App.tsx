@@ -20,15 +20,6 @@ import {
   generateNewsEvent,
   isGeminiConfigured,
 } from "./services/geminiService";
-import {
-  playBuildSound,
-  playDemolishSound,
-  playRewardSound,
-  playClickSound,
-  toggleAmbientHum,
-  setMuted,
-  getMuted,
-} from "./utils/audio";
 
 const createInitialGrid = (): Grid => {
   const grid: Grid = [];
@@ -68,9 +59,6 @@ function App() {
   // --- Game State ---
   const [gameStarted, setGameStarted] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(isGeminiConfigured);
-  const [hasSave, setHasSave] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [dataMode, setDataMode] = useState<string>("none");
 
   const [grid, setGrid] = useState<Grid>(createInitialGrid);
   const [stats, setStats] = useState<CityStats>({
@@ -105,82 +93,6 @@ function App() {
       color?: string;
     }[]
   >([]);
-
-  // Initialize save state & mute preference
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setHasSave(!!localStorage.getItem("skymetropolis_save"));
-      const muted = getMuted();
-      setIsMuted(muted);
-      setMuted(muted);
-    }
-  }, []);
-
-  // Ambient sound management
-  useEffect(() => {
-    if (gameStarted) {
-      toggleAmbientHum(!isMuted);
-    } else {
-      toggleAmbientHum(false);
-    }
-    return () => {
-      toggleAmbientHum(false);
-    };
-  }, [gameStarted, isMuted]);
-
-  // Auto-save every game day
-  useEffect(() => {
-    if (!gameStarted) return;
-    const saveState = {
-      grid,
-      stats,
-      newsFeed,
-      currentGoal,
-      globalTime,
-      maxCars,
-      gameSpeed,
-      aiEnabled,
-    };
-    try {
-      localStorage.setItem("skymetropolis_save", JSON.stringify(saveState));
-      setHasSave(true);
-    } catch (e) {
-      console.error("Failed to auto-save game state:", e);
-    }
-  }, [stats.day, gameStarted]);
-
-  // Load Game state restoration
-  const loadGame = useCallback(() => {
-    try {
-      const savedData = localStorage.getItem("skymetropolis_save");
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed.grid) setGrid(parsed.grid);
-        if (parsed.stats) setStats(parsed.stats);
-        if (parsed.newsFeed) setNewsFeed(parsed.newsFeed);
-        if (parsed.currentGoal) setCurrentGoal(parsed.currentGoal);
-        if (parsed.globalTime !== undefined) setGlobalTime(parsed.globalTime);
-        if (parsed.maxCars !== undefined) setMaxCars(parsed.maxCars);
-        if (parsed.gameSpeed !== undefined) setGameSpeed(parsed.gameSpeed);
-        if (parsed.aiEnabled !== undefined) setAiEnabled(parsed.aiEnabled);
-        
-        setGameStarted(true);
-        playRewardSound(); // Success sound!
-        
-        // Add news item about restoring
-        setNewsFeed((prev) => [
-          ...prev.slice(-12),
-          {
-            id: Date.now().toString(),
-            text: "City simulation restored successfully.",
-            type: "positive",
-          }
-        ]);
-      }
-    } catch (e) {
-      console.error("Failed to load saved game state:", e);
-    }
-  }, []);
 
   // Refs for accessing state inside intervals without dependencies
   const gridRef = useRef(grid);
@@ -504,7 +416,6 @@ function App() {
               ...prev,
               money: prev.money - demolishCost + refund,
             }));
-            playDemolishSound();
 
             // Trigger animation
             const id = Date.now();
@@ -616,7 +527,6 @@ function App() {
           const newGrid = currentGrid.map((row) => [...row]);
           newGrid[y][x] = { ...currentTile, buildingType: tool };
           setGrid(newGrid);
-          playBuildSound();
 
           if (
             tool === BuildingType.Park ||
@@ -651,7 +561,6 @@ function App() {
   const handleClaimReward = () => {
     if (currentGoal && currentGoal.completed) {
       setStats((prev) => ({ ...prev, money: prev.money + currentGoal.reward }));
-      playRewardSound();
       addNewsItem({
         id: Date.now().toString(),
         text: `Goal achieved! ${currentGoal.reward} deposited to treasury.`,
@@ -661,15 +570,6 @@ function App() {
       fetchNewGoal();
     }
   };
-
-  const handleToggleMute = useCallback(() => {
-    setIsMuted((prev) => {
-      const next = !prev;
-      setMuted(next);
-      playClickSound();
-      return next;
-    });
-  }, []);
 
   const handleStart = (enabled: boolean) => {
     setAiEnabled(enabled && isGeminiConfigured);
@@ -689,17 +589,11 @@ function App() {
         demolishedTiles={demolishedTiles}
         gameSpeed={gameSpeed}
         globalTime={globalTime}
-        dataMode={dataMode}
       />
 
       {/* Start Screen Overlay */}
       {!gameStarted && (
-        <StartScreen
-          onStart={handleStart}
-          aiAvailable={isGeminiConfigured}
-          hasSave={hasSave}
-          onLoadGame={loadGame}
-        />
+        <StartScreen onStart={handleStart} aiAvailable={isGeminiConfigured} />
       )}
 
       {/* UI Layer */}
@@ -751,7 +645,6 @@ function App() {
                         ...prev,
                         money: prev.money - upgradeCost,
                       }));
-                      playBuildSound();
                       addNewsItem({
                         id: Date.now().toString(),
                         text: `Citizen: "Wow, the new ${bConfig.name} upgrade to ${nextName} looks amazing!"`,
@@ -856,7 +749,6 @@ function App() {
                                 ...prev,
                                 money: prev.money - demolishCost + refund,
                               }));
-                              playDemolishSound();
                               setInspectedTile(null); // close modal
 
                               const id = Date.now();
@@ -914,10 +806,6 @@ function App() {
             setMaxCars={setMaxCars}
             gameSpeed={gameSpeed}
             setGameSpeed={setGameSpeed}
-            dataMode={dataMode}
-            setDataMode={setDataMode}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
           />
         </>
       )}

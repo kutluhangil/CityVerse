@@ -5,13 +5,10 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Cpu, ChevronRight, Activity, Zap, Layers, Focus } from "lucide-react";
-import { playClickSound } from "../utils/audio";
 
 interface StartScreenProps {
   onStart: (aiEnabled: boolean) => void;
   aiAvailable: boolean;
-  hasSave?: boolean;
-  onLoadGame?: () => void;
 }
 
 const containerVariants = {
@@ -34,12 +31,7 @@ const itemVariants = {
   },
 };
 
-const StartScreen: React.FC<StartScreenProps> = ({
-  onStart,
-  aiAvailable,
-  hasSave = false,
-  onLoadGame,
-}) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStart, aiAvailable }) => {
   const [aiEnabled, setAiEnabled] = useState(aiAvailable);
 
   return (
@@ -121,10 +113,7 @@ const StartScreen: React.FC<StartScreenProps> = ({
                   className="sr-only peer"
                   checked={aiEnabled}
                   disabled={!aiAvailable}
-                  onChange={(e) => {
-                    playClickSound();
-                    setAiEnabled(e.target.checked);
-                  }}
+                  onChange={(e) => setAiEnabled(e.target.checked)}
                 />
                 <div
                   className={`w-12 h-6 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border border-gray-700 ${aiAvailable ? "bg-gray-800 peer peer-checked:after:translate-x-full peer-checked:after:border-white peer-checked:bg-cyan-500 peer-checked:after:bg-white" : "bg-gray-900 opacity-60 cursor-not-allowed"}`}
@@ -144,28 +133,8 @@ const StartScreen: React.FC<StartScreenProps> = ({
             variants={itemVariants}
             className="flex flex-col sm:flex-row gap-4 mb-12"
           >
-            {hasSave && onLoadGame && (
-              <button
-                onClick={() => {
-                  playClickSound();
-                  onLoadGame();
-                }}
-                className="flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-full font-bold tracking-tight text-white transition-all group relative overflow-hidden border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 z-0 opacity-80 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute inset-[2px] bg-black/80 rounded-full z-0 group-hover:bg-black/60 transition-colors"></div>
-                <span className="relative z-10 text-emerald-300 group-hover:text-white transition-colors">Continue City</span>
-                <ChevronRight
-                  size={18}
-                  className="relative z-10 group-hover:translate-x-1 transition-transform text-emerald-400 group-hover:text-white"
-                />
-              </button>
-            )}
             <button
-              onClick={() => {
-                playClickSound();
-                onStart(aiEnabled);
-              }}
+              onClick={() => onStart(aiEnabled)}
               className="flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-full font-bold tracking-tight text-white transition-all group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 animate-bg-pan bg-[length:200%_auto] z-0 opacity-80 group-hover:opacity-100 transition-opacity"></div>

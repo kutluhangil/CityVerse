@@ -570,7 +570,7 @@ const wheel4Geo = wheelGeoBase.clone(); wheel4Geo.translate(-0.15, 0.06, -0.15);
 
 const carColors = ['#ef4444', '#3b82f6', '#eab308', '#ffffff', '#1f2937', '#f97316'];
 
-const TrafficSystem = ({ grid, maxCars, weather, gameSpeed, globalTime }: { grid: Grid, maxCars: number, weather: string, gameSpeed: number, globalTime: number }) => {
+const TrafficSystem = ({ grid, maxCars, weather }: { grid: Grid, maxCars: number, weather: string }) => {
   const roadTilesMap = useMemo(() => {
     const map = new Map<string, {x: number, y: number, neighbors: number}>();
     grid.forEach(row => row.forEach(tile => {
@@ -665,9 +665,9 @@ const TrafficSystem = ({ grid, maxCars, weather, gameSpeed, globalTime }: { grid
     }
   }, [roadTiles, carCount]);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (!carsRef.current || roadTiles.length < 2 || carsState.current.length === 0) return;
-    const time = globalTime * 10;
+    const time = state.clock.elapsedTime;
 
     for (let i = 0; i < carCount; i++) {
       const idx = i * 6;
@@ -730,7 +730,7 @@ const TrafficSystem = ({ grid, maxCars, weather, gameSpeed, globalTime }: { grid
       }
 
       if (canMove && tarNode) {
-        progress += currentSpeed * delta * 60 * gameSpeed;
+        progress += currentSpeed;
       }
 
       if (progress >= 1) {
@@ -1573,12 +1573,12 @@ const GridBorder = () => {
     );
 };
 
-const TrafficLight = ({ x, y, globalTime }: { x: number, y: number, globalTime: number }) => {
+const TrafficLight = ({ x, y }: { x: number, y: number }) => {
   const refX = useRef<THREE.MeshStandardMaterial>(null);
   const refY = useRef<THREE.MeshStandardMaterial>(null);
   
   useFrame((state) => {
-    const time = (globalTime * 10) / 4 + x + y;
+    const time = state.clock.elapsedTime / 4 + x + y;
     const cycle = time % 2;
     if (refX.current && refY.current) {
       if (cycle < 0.8) {
@@ -1623,7 +1623,7 @@ const TrafficLight = ({ x, y, globalTime }: { x: number, y: number, globalTime: 
   );
 };
 
-const RoadMarkings = React.memo(({ x, y, grid, yOffset, globalTime = 0 }: { x: number; y: number; grid: Grid; yOffset: number; globalTime?: number }) => {
+const RoadMarkings = React.memo(({ x, y, grid, yOffset }: { x: number; y: number; grid: Grid; yOffset: number }) => {
   const lineMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#fbbf24' }), []);
   const lineGeo = useMemo(() => new THREE.PlaneGeometry(0.1, 0.5), []);
   const tireMarkMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#111827', transparent: true, opacity: 0.3 }), []);
@@ -1700,7 +1700,7 @@ const RoadMarkings = React.memo(({ x, y, grid, yOffset, globalTime = 0 }: { x: n
          </mesh>
       )}
 
-      {connections >= 3 && <group rotation={[Math.PI / 2, 0, 0]}><TrafficLight x={x} y={y} globalTime={globalTime} /></group>}
+      {connections >= 3 && <group rotation={[Math.PI / 2, 0, 0]}><TrafficLight x={x} y={y} /></group>}
     </group>
   );
 });
@@ -1711,14 +1711,13 @@ interface GroundTileProps {
     y: number;
     grid: Grid;
     weather: string;
-    globalTime?: number;
     onHover: (x: number, y: number) => void;
     onLeave: () => void;
     onClick: (x: number, y: number) => void;
 }
 
 // Ground Tile: Handles pointer events and forms base terrain
-const GroundTile = React.memo(({ type, x, y, grid, weather, globalTime = 0, onHover, onLeave, onClick }: GroundTileProps) => {
+const GroundTile = React.memo(({ type, x, y, grid, weather, onHover, onLeave, onClick }: GroundTileProps) => {
   const [wx, _, wz] = gridToWorld(x, y);
   
   let color = '#10b981';
@@ -1793,7 +1792,7 @@ const GroundTile = React.memo(({ type, x, y, grid, weather, globalTime = 0, onHo
     >
       <boxGeometry args={[1, thickness, 1]} />
       <meshStandardMaterial color={color} flatShading roughness={1} />
-      {type === BuildingType.Road && <RoadMarkings x={x} y={y} grid={grid} yOffset={thickness / 2 + 0.001} globalTime={globalTime} />}
+      {type === BuildingType.Road && <RoadMarkings x={x} y={y} grid={grid} yOffset={thickness / 2 + 0.001} />}
     </mesh>
   );
 });
@@ -1821,11 +1820,12 @@ interface IsoMapProps {
   demolishedTiles?: {x: number, y: number, id: number, type?: BuildingType, level?: number, color?: string}[];
   gameSpeed?: number;
   globalTime?: number;
-  dataMode: string;
 }
 
-const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny', maxCars = 6, demolishedTiles = [], gameSpeed = 1, globalTime = 0, dataMode }) => {
+const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, population, weather = 'sunny', maxCars = 6, demolishedTiles = [], gameSpeed = 1, globalTime = 0 }) => {
   const [hoveredTile, setHoveredTile] = useState<{x: number, y: number} | null>(null);
+
+  const [dataMode, setDataMode] = useState<string>('none');
 
   const handleHover = useCallback((x: number, y: number) => {
     setHoveredTile({ x, y });
@@ -1876,7 +1876,6 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
                     x={x} y={y} 
                     grid={grid}
                     weather={weather}
-                    globalTime={globalTime}
                     onHover={handleHover}
                     onLeave={handleLeave}
                     onClick={(x, y) => {
@@ -1902,7 +1901,7 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
 
           {/* Visual Elements - disable pointer events */}
           <group raycast={() => null}>
-            <TrafficSystem grid={grid} maxCars={maxCars} weather={weather} gameSpeed={gameSpeed} globalTime={globalTime} />
+            <TrafficSystem grid={grid} maxCars={maxCars} weather={weather} />
            <PedestrianSystem grid={grid} maxPeds={Math.min(100, Math.max(10, population / 2))} />
            <BirdSystem />
             <HeatmapOverlay grid={grid} mode={dataMode} />
@@ -1949,6 +1948,22 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
           <Bloom luminanceThreshold={1.5} mipmapBlur luminanceSmoothing={0.025} intensity={1.2} />
         </EffectComposer>
       </Canvas>
+
+      {/* Heatmap UI */}
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto bg-gray-900/80 p-3 rounded-lg border border-gray-600/50 backdrop-blur-xl shadow-2xl">
+         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Data Overlays</span>
+         <div className="flex gap-2">
+            {['none', 'population', 'income', 'happiness'].map(mode => (
+               <button
+                  key={mode}
+                  onClick={() => setDataMode(mode)}
+                  className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all ${dataMode === mode ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+               >
+                  {mode}
+               </button>
+            ))}
+         </div>
+      </div>
     </div>
   );
 };
