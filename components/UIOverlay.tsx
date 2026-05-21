@@ -5,7 +5,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BuildingType, CityStats, AIGoal, NewsItem } from '../types';
 import { BUILDINGS } from '../constants';
-import { Sun, CloudRain, CloudSnow, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, CloudRain, CloudSnow, Search, ChevronDown, ChevronUp, Volume2, VolumeX } from 'lucide-react';
+import { playClickSound } from '../utils/audio';
 
 interface UIOverlayProps {
   stats: CityStats;
@@ -20,6 +21,10 @@ interface UIOverlayProps {
   setGameSpeed: (speed: number) => void;
   maxCars: number;
   setMaxCars: (n: number) => void;
+  dataMode: string;
+  setDataMode: (mode: string) => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
 const tools = [
@@ -237,7 +242,11 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   maxCars,
   setMaxCars,
   gameSpeed,
-  setGameSpeed
+  setGameSpeed,
+  dataMode,
+  setDataMode,
+  isMuted,
+  onToggleMute
 }) => {
   const newsRef = useRef<HTMLDivElement>(null);
   const [showGoalMobile, setShowGoalMobile] = useState(false);
@@ -255,38 +264,75 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       {/* Top Bar: Stats & Goal */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-start pointer-events-auto gap-3 w-full max-w-full">
         
-        {/* Stats */}
-        <div className="bg-slate-900/90 text-white p-2 md:p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl flex gap-3 md:gap-6 items-center justify-start md:justify-between w-full md:w-auto mt-1 md:mt-0 overflow-x-auto no-scrollbar">
-          <div className="flex flex-col pl-2">
-            <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Treasury</span>
-            <span className="text-xl md:text-2xl font-black text-green-400 font-mono drop-shadow-md leading-none mt-1">${stats.money.toLocaleString()}</span>
+        {/* Stats and Data Overlays Container */}
+        <div className="flex flex-col gap-2 w-full md:w-auto">
+          {/* Stats */}
+          <div className="bg-slate-900/90 text-white p-2 md:p-3 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl flex gap-3 md:gap-6 items-center justify-start md:justify-between w-full md:w-auto mt-1 md:mt-0 overflow-x-auto no-scrollbar">
+            <div className="flex flex-col pl-2">
+              <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Treasury</span>
+              <span className="text-xl md:text-2xl font-black text-green-400 font-mono drop-shadow-md leading-none mt-1">${stats.money.toLocaleString()}</span>
+            </div>
+            <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
+            <div className="flex flex-col pl-1">
+              <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Citizens</span>
+              <span className="text-lg md:text-xl font-bold text-blue-300 font-mono drop-shadow-md leading-none mt-1">{stats.population.toLocaleString()}</span>
+            </div>
+            <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
+            <div className="flex flex-col pr-1 items-end">
+               <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Day</span>
+               <span className="text-lg md:text-xl font-bold text-white font-mono leading-none mt-1">{stats.day}</span>
+            </div>
+            <div className="flex flex-row items-center gap-1">
+               {[1, 2, 3].map(speed => (
+                   <button
+                     key={speed}
+                     onClick={() => {
+                       setGameSpeed(speed);
+                       playClickSound();
+                     }}
+                     className={`px-2 py-1 text-xs rounded font-bold transition-all ${gameSpeed === speed ? 'bg-blue-500 text-white' : 'bg-slate-700 text-gray-400 hover:bg-slate-650'}`}
+                   >
+                       {speed}x
+                   </button>
+               ))}
+            </div>
+            <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
+            <div className="flex flex-col pr-1 items-end">
+               <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Joy</span>
+               <span className={`text-lg md:text-xl font-bold font-mono leading-none mt-1 ${stats.happiness >= 60 ? 'text-green-300' : stats.happiness < 40 ? 'text-red-400' : 'text-yellow-300'}`}>{stats.happiness}%</span>
+            </div>
+            <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
+            <div className="flex flex-col items-center pr-2">
+               <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight mb-1">Weather</span>
+               <WeatherWidget weather={stats.weather} />
+            </div>
+            <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
+            <button
+               onClick={onToggleMute}
+               className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-white hover:text-indigo-400 transition-colors shadow-inner flex items-center justify-center pointer-events-auto"
+               title={isMuted ? "Unmute sound" : "Mute sound"}
+            >
+               {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
           </div>
-          <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
-          <div className="flex flex-col pl-1">
-            <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Citizens</span>
-            <span className="text-lg md:text-xl font-bold text-blue-300 font-mono drop-shadow-md leading-none mt-1">{stats.population.toLocaleString()}</span>
-          </div>
-          <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
-          <div className="flex flex-col pr-1 items-end">
-             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Day</span>
-             <span className="text-lg md:text-xl font-bold text-white font-mono leading-none mt-1">{stats.day}</span>
-          </div>
-          <div className="flex flex-row items-center gap-1">
-             {[1, 2, 3].map(speed => (
-                 <button key={speed} onClick={() => setGameSpeed(speed)} className={`px-2 py-1 text-xs rounded font-bold ${gameSpeed === speed ? 'bg-blue-500 text-white' : 'bg-slate-700 text-gray-400'}`}>
-                     {speed}x
-                 </button>
-             ))}
-          </div>
-          <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
-          <div className="flex flex-col pr-1 items-end">
-             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight">Joy</span>
-             <span className={`text-lg md:text-xl font-bold font-mono leading-none mt-1 ${stats.happiness >= 60 ? 'text-green-300' : stats.happiness < 40 ? 'text-red-400' : 'text-yellow-300'}`}>{stats.happiness}%</span>
-          </div>
-          <div className="w-px h-8 md:h-10 bg-slate-700/80"></div>
-          <div className="flex flex-col items-center pr-2">
-             <span className="text-[8px] md:text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-tight mb-1">Weather</span>
-             <WeatherWidget weather={stats.weather} />
+
+          {/* Data Overlays (Heatmap Selectors) */}
+          <div className="flex items-center gap-2 bg-slate-900/90 p-2 rounded-xl border border-slate-700/85 backdrop-blur-xl shadow-xl w-full md:w-fit overflow-x-auto no-scrollbar">
+             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest pl-1 select-none">Data View:</span>
+             <div className="flex gap-1.5">
+               {['none', 'population', 'income', 'happiness'].map(mode => (
+                  <button
+                     key={mode}
+                     onClick={() => {
+                       setDataMode(mode);
+                       playClickSound();
+                     }}
+                     className={`px-2.5 py-1 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all ${dataMode === mode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-gray-400 hover:bg-slate-700 hover:text-white'}`}
+                  >
+                     {mode === 'none' ? 'Default' : mode}
+                  </button>
+               ))}
+             </div>
           </div>
         </div>
 
@@ -294,7 +340,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className={`w-full md:w-80 bg-slate-900/90 text-white rounded-2xl border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)] backdrop-blur-xl overflow-hidden transition-all ${!aiEnabled ? 'opacity-80 grayscale-[0.5]' : ''}`}>
           <div 
              className="bg-indigo-900/40 px-3 md:px-4 py-2 flex justify-between items-center border-b border-slate-700 cursor-pointer md:cursor-default"
-             onClick={() => setShowGoalMobile(!showGoalMobile)}
+             onClick={() => { setShowGoalMobile(!showGoalMobile); playClickSound(); }}
           >
             <span className="font-bold uppercase text-[10px] md:text-xs tracking-widest flex items-center gap-2">
               {aiEnabled ? (
@@ -373,7 +419,10 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                 key={type}
                 type={type}
                 isSelected={selectedTool === type}
-                onClick={() => onSelectTool(type)}
+                onClick={() => {
+                  onSelectTool(type);
+                  playClickSound();
+                }}
                 money={stats.money}
               />
             ))}
@@ -384,9 +433,9 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className="hidden md:flex flex-col gap-2 p-2.5 bg-slate-900/85 rounded-2xl border border-slate-700/80 backdrop-blur-xl shadow-2xl items-center justify-center min-w-[120px]">
           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">Traffic Cap</div>
           <div className="flex items-center gap-4">
-             <button onClick={() => setMaxCars(Math.max(0, maxCars - 2))} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold transition-colors">-</button>
+             <button onClick={() => { setMaxCars(Math.max(0, maxCars - 2)); playClickSound(); }} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold transition-colors">-</button>
              <span className="text-white font-mono text-lg font-bold w-6 text-center">{maxCars}</span>
-             <button onClick={() => setMaxCars(Math.min(50, maxCars + 2))} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold transition-colors">+</button>
+             <button onClick={() => { setMaxCars(Math.min(50, maxCars + 2)); playClickSound(); }} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold transition-colors">+</button>
           </div>
         </div>
 
@@ -394,7 +443,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className={`w-full md:w-80 bg-slate-900/85 text-white rounded-2xl border border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden relative transition-all ${!showNewsMobile ? 'h-auto md:h-36' : 'h-36 md:h-36'}`}>
           <div 
              className="bg-slate-800/80 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-slate-700 flex justify-between items-center z-20 shadow-sm cursor-pointer md:cursor-default"
-             onClick={() => setShowNewsMobile(!showNewsMobile)}
+             onClick={() => { setShowNewsMobile(!showNewsMobile); playClickSound(); }}
           >
             <span>City Feed</span>
             <div className="flex items-center gap-2">
