@@ -41,7 +41,7 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
   },
   [BuildingType.Commercial]: {
     type: BuildingType.Commercial,
-    cost: 200,
+    cost: 220,
     name: 'Shop',
     description: '+$15/day',
     color: '#60a5fa', // blue-400

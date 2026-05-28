@@ -211,7 +211,7 @@ const ToolButton: React.FC<{
         </span>
         <div className="flex flex-col items-center mt-[1px]">
           {config.cost > 0 && (
-            <span className={\`text-[9px] font-mono leading-none font-bold \${canAfford ? 'text-yellow-400' : 'text-red-400'}\`}>-$\${config.cost}</span>
+            <span className={\`text-[9px] font-mono leading-none font-bold \${canAfford ? 'text-yellow-400' : 'text-red-400'}\`}>-\${config.cost}</span>
           )}
           {(config.incomeGen !== 0 || config.popGen !== 0) && (
               <div className="flex gap-1 bg-black/40 px-1 py-[1.5px] rounded border border-white/5 shadow-inner mt-[2px]">
