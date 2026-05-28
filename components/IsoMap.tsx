@@ -906,16 +906,17 @@ const Bird = ({ position, speed, offset }: { position: [number, number, number],
 
 const FogOverlay = ({ weather }: { weather: string }) => {
     const fogRef = useRef<THREE.InstancedMesh>(null);
-    const count = weather === 'snowy' ? 30 : (weather === 'rainy' ? 10 : 0);
+    // Snow: fewer, smaller puffs — avoid washing out the scene with Bloom
+    const count = weather === 'snowy' ? 8 : (weather === 'rainy' ? 10 : 0);
     const particles = useRef(new Float32Array(count * 4)); // x, y, z, speed
     const dummy = useMemo(() => new THREE.Object3D(), []);
 
     useEffect(() => {
         for (let i = 0; i < count; i++) {
             particles.current[i*4] = getRandomRange(-GRID_SIZE, GRID_SIZE);
-            particles.current[i*4+1] = getRandomRange(1, 4);
+            particles.current[i*4+1] = getRandomRange(1, 3);
             particles.current[i*4+2] = getRandomRange(-GRID_SIZE, GRID_SIZE);
-            particles.current[i*4+3] = getRandomRange(0.01, 0.03); // drifting speed
+            particles.current[i*4+3] = getRandomRange(0.01, 0.025);
         }
     }, [count]);
 
@@ -929,19 +930,20 @@ const FogOverlay = ({ weather }: { weather: string }) => {
             const isStrongWind = weather === 'snowy' || weather === 'rainy';
             const driftSpeed = isStrongWind ? speed * 2 : speed;
 
-            x += driftSpeed; // drift mainly along X
-            z += driftSpeed * 0.3; // drift slightly along Z
-            x += Math.sin(state.clock.elapsedTime * 0.5 + i) * 0.01; // sway
+            x += driftSpeed;
+            z += driftSpeed * 0.3;
+            x += Math.sin(state.clock.elapsedTime * 0.5 + i) * 0.01;
 
             if (x > GRID_SIZE + 5 || z > GRID_SIZE + 5) {
                 x = getRandomRange(-GRID_SIZE - 5, -GRID_SIZE);
-                y = getRandomRange(1, 4);
+                y = getRandomRange(1, 3);
                 z = getRandomRange(-GRID_SIZE, GRID_SIZE);
             }
 
             particles.current[i*4] = x;
             dummy.position.set(x, y, z);
-            dummy.scale.set(10, 4, 10);
+            // Much smaller fog puffs for snow to avoid bloom overexposure
+            dummy.scale.set(weather === 'snowy' ? 4 : 10, weather === 'snowy' ? 1.5 : 4, weather === 'snowy' ? 4 : 10);
             dummy.rotation.set(0, state.clock.elapsedTime * 0.1, 0);
             dummy.updateMatrix();
             fogRef.current.setMatrixAt(i, dummy.matrix);
@@ -953,7 +955,8 @@ const FogOverlay = ({ weather }: { weather: string }) => {
 
     return (
         <instancedMesh ref={fogRef} args={[sphereGeo, undefined, count]} raycast={() => null}>
-            <meshStandardMaterial color={weather === 'snowy' ? "#ffffff" : "#cbd5e1"} transparent opacity={weather === 'snowy' ? 0.2 : 0.1} depthWrite={false} roughness={1} />
+            {/* Snow fog: muted pale blue instead of pure white, very low opacity */}
+            <meshStandardMaterial color={weather === 'snowy' ? "#b8cfe8" : "#cbd5e1"} transparent opacity={weather === 'snowy' ? 0.055 : 0.1} depthWrite={false} roughness={1} />
         </instancedMesh>
     );
 };
@@ -1333,7 +1336,7 @@ const DayNightSystem = ({ weather, globalTime }: { weather: string, globalTime: 
             const dayBlend = Math.max(0, Math.min(1, (sunY + 0.2) / 0.4)); // 0 at dawn/dusk, 1 at midday
                         let maxIntensity = 2.5;
             if (weather === 'rainy') maxIntensity = 1.0;
-            if (weather === 'snowy') maxIntensity = 1.5;
+            if (weather === 'snowy') maxIntensity = 1.1; // toned down to avoid overexposure
             dirLightRef.current.intensity = dayBlend * maxIntensity;
             
             const nightBlend = 1 - dayBlend;
@@ -1348,7 +1351,7 @@ const DayNightSystem = ({ weather, globalTime }: { weather: string, globalTime: 
                 // lerp colors
                                 let dayHex = 0xcceeff;
                 if (weather === 'rainy') dayHex = 0x94a3b8; // Slate
-                else if (weather === 'snowy') dayHex = 0xe0f2fe; // Very light blue
+                else if (weather === 'snowy') dayHex = 0xc5ddf0; // Muted steel blue, not blinding white
                 
                 const dayColor = new THREE.Color(dayHex);
                 const nightColor = new THREE.Color(0x1e1b4b);
@@ -1744,7 +1747,7 @@ const GroundTile = React.memo(({ type, x, y, grid, weather, onHover, onLeave, on
   if (type === BuildingType.None) {
       const noise = getHash(x, y);
       if (weather === 'snowy') {
-         color = nearTypes.size > 0 ? '#e2e8f0' : '#f8fafc';
+         color = nearTypes.size > 0 ? '#cbd5e1' : '#dde6f0'; // cooler, less blinding snow ground
       } else {
          if (nearTypes.has(BuildingType.Industrial)) {
              color = noise > 0.5 ? '#71717a' : '#52525b'; // grayish dead ground
@@ -1773,7 +1776,7 @@ const GroundTile = React.memo(({ type, x, y, grid, weather, onHover, onLeave, on
     color = baseColor;
     topY = -0.29; // slightly higher
   } else {
-    color = weather === 'snowy' ? '#f1f5f9' : '#d1d5db'; // concrete base
+    color = weather === 'snowy' ? '#d4dfe8' : '#d1d5db'; // concrete base (snow: less white)
     topY = -0.28;
   }
 

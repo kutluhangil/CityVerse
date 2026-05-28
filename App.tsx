@@ -99,6 +99,7 @@ function App() {
   const statsRef = useRef(stats);
   const goalRef = useRef(currentGoal);
   const aiEnabledRef = useRef(aiEnabled);
+  const weatherTicksRef = useRef(0); // tracks how many ticks current weather has been active
 
   // Sync refs
   useEffect(() => {
@@ -233,17 +234,23 @@ function App() {
             : 0;
 
         let newWeather = prev.weather;
-        if (Math.random() > 0.8) {
-          const choices: ("sunny" | "rainy" | "snowy")[] = [
-            "sunny",
-            "sunny",
-            "rainy",
-            "snowy",
-          ];
-          const nextWeather =
-            choices[Math.floor(Math.random() * choices.length)];
+        weatherTicksRef.current += 1;
+        // Minimum ticks before weather can change (~60 ticks = ~60s at 1x speed)
+        const minWeatherDuration = 60;
+        if (weatherTicksRef.current >= minWeatherDuration && Math.random() > 0.97) {
+          // Natural transitions: sunny→rainy→sunny/snowy→rainy→sunny
+          type WeatherType = "sunny" | "rainy" | "snowy";
+          const transitions: Record<WeatherType, WeatherType[]> = {
+            sunny: ["sunny", "sunny", "sunny", "rainy"],
+            rainy: ["rainy", "sunny", "sunny", "snowy"],
+            snowy: ["snowy", "rainy", "rainy"],
+          };
+          const current = prev.weather as WeatherType;
+          const options = transitions[current];
+          const nextWeather = options[Math.floor(Math.random() * options.length)];
           if (nextWeather !== newWeather) {
             newWeather = nextWeather;
+            weatherTicksRef.current = 0;
             if (newWeather === "rainy" && Math.random() > 0.3) {
               addNewsItem({
                 id: Date.now().toString() + Math.random(),
