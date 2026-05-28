@@ -2,7 +2,7 @@
 
 <br />
 
-<img src="https://img.shields.io/badge/SkyMetropolis-v1.0-000000?style=for-the-badge&logoColor=white" alt="version" />
+<img src="https://img.shields.io/badge/CityVerse-v1.0-000000?style=for-the-badge&logoColor=white" alt="version" />
 <img src="https://img.shields.io/badge/Built_with-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="react" />
 <img src="https://img.shields.io/badge/Three.js-3D-000000?style=for-the-badge&logo=threedotjs&logoColor=white" alt="threejs" />
 <img src="https://img.shields.io/badge/TailwindCSS-v3-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="tailwind" />
@@ -26,9 +26,9 @@
 
 ---
 
-## ✦ What is SkyMetropolis?
+## ✦ What is CityVerse?
 
-**SkyMetropolis** is a next-generation isometric 3D city-building simulation where Artificial Intelligence dynamically responds to your actions. Create thriving urban centers with residential, commercial, industrial, and park zones while managing the economy, population growth, and citizen happiness.
+**CityVerse** is a next-generation isometric 3D city-building simulation where Artificial Intelligence dynamically responds to your actions. Create thriving urban centers with residential, commercial, industrial, and park zones while managing the economy, population growth, and citizen happiness.
 
 Instead of static events, the **Gemini AI Advisor** evaluates your city's exact state to generate unique quests, shape the daily news feed, and respond directly to fluctuations in citizen morale. Built for the modern web with React Three Fiber, Vite, and Tailwind CSS.
 
@@ -39,7 +39,7 @@ Instead of static events, the **Gemini AI Advisor** evaluates your city's exact 
 
 <br />
 
-**SkyMetropolis**, Yapay Zekanın eylemlerinize dinamik olarak tepki verdiği yeni nesil izometrik 3D şehir kurma simülasyonudur. Şehir ekonomisini, nüfus artışını ve vatandaş mutluluğunu yönetirken; konut, ticaret, sanayi ve park alanlarıyla büyüyen kentsel merkezler inşa edin.
+**CityVerse**, Yapay Zekanın eylemlerinize dinamik olarak tepki verdiği yeni nesil izometrik 3D şehir kurma simülasyonudur. Şehir ekonomisini, nüfus artışını ve vatandaş mutluluğunu yönetirken; konut, ticaret, sanayi ve park alanlarıyla büyüyen kentsel merkezler inşa edin.
 
 Statik olaylar yerine, **Gemini Yapay Zeka Danışmanı** şehrinizin tam durumunu değerlendirerek benzersiz görevler oluşturur, günlük haber akışını şekillendirir ve vatandaş moralindeki dalgalanmalara doğrudan tepki verir. React Three Fiber, Vite ve Tailwind CSS ile modern web için inşa edilmiştir.
 
@@ -77,7 +77,7 @@ Fonts           →  Inter (UI) · Space Grotesk (HUD/Display)
 ## 📐 Project Structure
 
 ```text
-SkyMetropolis/
+CityVerse/
 ├── components/
 │   ├── IsoMap.tsx           # Primary 3D simulation engine, procedural grids, and traffic
 │   ├── StartScreen.tsx      # Premium landing & initialization interface
@@ -105,8 +105,8 @@ SkyMetropolis/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/SkyMetropolis.git
-cd SkyMetropolis
+git clone https://github.com/your-username/CityVerse.git
+cd CityVerse
 
 # Install dependencies
 npm install

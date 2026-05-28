@@ -1528,7 +1528,7 @@ const EnvironmentEffects = ({ weather, grid }: { weather: string, grid: Grid }) 
 
             {/* Water */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.6, 0]} receiveShadow>
-                <planeGeometry args={[GRID_SIZE * 4, GRID_SIZE * 4]} />
+                <planeGeometry args={[10000, 10000]} />
                 <meshStandardMaterial color="#3b82f6" roughness={0.1} metalness={0.5} opacity={0.8} transparent />
             </mesh>
         </group>
@@ -1905,7 +1905,6 @@ const IsoMap: React.FC<IsoMapProps> = ({ grid, onTileClick, hoveredTool, populat
            <PedestrianSystem grid={grid} maxPeds={Math.min(100, Math.max(10, population / 2))} />
            <BirdSystem />
             <HeatmapOverlay grid={grid} mode={dataMode} />
-            <GridBorder />
             {demolishedTiles.map(dt => (
                <DustCloud key={dt.id} x={dt.x} y={dt.y} type={dt.type} level={dt.level} color={dt.color} />
             ))}
