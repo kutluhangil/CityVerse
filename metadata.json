@@ -1,6 +1,6 @@
 {
   "name": "CityVerse",
-  "description": "Manage a virtual metropolis and fulfill tasks provided by Gemini.",
+  "description": "Manage a virtual metropolis and complete goals set by the city advisor.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

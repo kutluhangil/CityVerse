@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 import { BuildingConfig, BuildingType } from './types';
 
 // Map Settings
@@ -10,6 +10,12 @@ export const GRID_SIZE = 15;
 // Game Settings
 export const TICK_RATE_MS = 2000; // Game loop updates every 2 seconds
 export const INITIAL_MONEY = 1000;
+export const DEFAULT_TAX_RATE = 9;
+export const MIN_TAX_RATE = 5;
+export const MAX_TAX_RATE = 20;
+export const BANKRUPTCY_LIMIT = -500;
+export const FOREST_CLEAR_COST = 35;
+export const REPAIR_COST_BASE = 45;
 
 export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
   [BuildingType.None]: {
@@ -17,98 +23,183 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
     cost: 0,
     name: 'Bulldoze',
     description: 'Clear a tile',
-    color: '#ef4444', // Used for UI
+    color: '#c44536',
     popGen: 0,
     incomeGen: 0,
+    upkeep: 0,
+    unlockTier: 0,
   },
   [BuildingType.Road]: {
     type: BuildingType.Road,
     cost: 10,
     name: 'Road',
     description: 'Connects buildings.',
-    color: '#374151', // gray-700
+    color: '#52514e',
     popGen: 0,
     incomeGen: 0,
+    upkeep: 0,
+    unlockTier: 0,
   },
   [BuildingType.Residential]: {
     type: BuildingType.Residential,
     cost: 100,
     name: 'House',
     description: '+5 Pop/day',
-    color: '#f87171', // red-400
+    color: '#f4f1ea',
     popGen: 5,
     incomeGen: 0,
+    upkeep: 1,
+    unlockTier: 0,
   },
   [BuildingType.Commercial]: {
     type: BuildingType.Commercial,
     cost: 220,
     name: 'Shop',
     description: '+$15/day',
-    color: '#60a5fa', // blue-400
+    color: '#e7e4dc',
     popGen: 0,
     incomeGen: 15,
+    upkeep: 3,
+    unlockTier: 0,
   },
   [BuildingType.Industrial]: {
     type: BuildingType.Industrial,
     cost: 400,
     name: 'Factory',
-    description: '+$40/day',
-    color: '#facc15', // yellow-400
+    description: '+$36/day',
+    color: '#d5d1c6',
     popGen: 0,
-    incomeGen: 40,
+    incomeGen: 36,
+    upkeep: 6,
+    unlockTier: 0,
   },
   [BuildingType.Park]: {
     type: BuildingType.Park,
     cost: 50,
     name: 'Park',
     description: 'Looks nice.',
-    color: '#4ade80', // green-400
+    color: '#6f9172',
     popGen: 1,
     incomeGen: 0,
+    upkeep: 1,
+    serviceRadius: 3,
+    unlockTier: 0,
   },
   [BuildingType.ParkPlayground]: {
     type: BuildingType.ParkPlayground,
     cost: 150,
     name: 'Playground',
-    description: 'Boosts happiness. Must be placed near Residential.',
-    color: '#34d399', // emerald-400
+    description: 'Boosts happiness. Must be placed near a road.',
+    color: '#7ea172',
     popGen: 0,
-    incomeGen: -2,
+    incomeGen: 0,
+    upkeep: 2,
+    serviceRadius: 4,
+    unlockTier: 0,
   },
   [BuildingType.ParkFountain]: {
     type: BuildingType.ParkFountain,
     cost: 250,
     name: 'Fountain',
     description: 'Massively boosts happiness.',
-    color: '#60a5fa', // blue-400
+    color: '#8ea4b2',
     popGen: 0,
-    incomeGen: -5,
+    incomeGen: 0,
+    upkeep: 5,
+    serviceRadius: 5,
+    unlockTier: 0,
+  },
+  [BuildingType.PowerPlant]: {
+    type: BuildingType.PowerPlant,
+    cost: 300,
+    name: 'Power',
+    description: 'Powers nearby zones (+efficiency). Radius 5.',
+    color: '#c89b54',
+    popGen: 0,
+    incomeGen: 0,
+    upkeep: 8,
+    serviceRadius: 5,
+    unlockTier: 0,
+  },
+  [BuildingType.FireStation]: {
+    type: BuildingType.FireStation,
+    cost: 350,
+    name: 'Fire',
+    description: 'Protects blocks and boosts joy. Unlocks at Town.',
+    color: '#d97757',
+    popGen: 0,
+    incomeGen: 0,
+    upkeep: 10,
+    serviceRadius: 4,
+    unlockTier: 1,
+  },
+  [BuildingType.School]: {
+    type: BuildingType.School,
+    cost: 380,
+    name: 'School',
+    description: 'Boosts citizen growth & joy. Unlocks at Town.',
+    color: '#8a7c66',
+    popGen: 0,
+    incomeGen: 0,
+    upkeep: 12,
+    serviceRadius: 4,
+    unlockTier: 1,
+  },
+  [BuildingType.PoliceStation]: {
+    type: BuildingType.PoliceStation,
+    cost: 420,
+    name: 'Police',
+    description: 'Boosts commerce & safety. Unlocks at City.',
+    color: '#4a5d6e',
+    popGen: 0,
+    incomeGen: 0,
+    upkeep: 14,
+    serviceRadius: 5,
+    unlockTier: 2,
+  },
+  [BuildingType.Hospital]: {
+    type: BuildingType.Hospital,
+    cost: 500,
+    name: 'Hospital',
+    description: 'Raises housing capacity & joy. Unlocks at City.',
+    color: '#faf9f5',
+    popGen: 0,
+    incomeGen: 0,
+    upkeep: 18,
+    serviceRadius: 5,
+    unlockTier: 2,
   },
   [BuildingType.Upgrade]: {
     type: BuildingType.Upgrade,
-    cost: 100, // Base upgrade cost, acts as a general tool
+    cost: 100,
     name: 'Upgrade',
     description: 'Enhance a building to increase its stats and height.',
-    color: '#eab308', // yellow-500
+    color: '#d97757',
     popGen: 0,
     incomeGen: 0,
+    upkeep: 0,
+    unlockTier: 0,
   },
   [BuildingType.Inspect]: {
     type: BuildingType.Inspect,
     cost: 0,
     name: 'Inspect',
     description: 'Select a building to view details and upgrade options.',
-    color: '#a855f7', // purple-500
+    color: '#141413',
     popGen: 0,
     incomeGen: 0,
+    upkeep: 0,
+    unlockTier: 0,
   },
   [BuildingType.Demolish]: {
     type: BuildingType.Demolish,
     cost: 15,
     name: 'Demolish',
     description: 'Destroy a building for space. Partially refunds costs.',
-    color: '#dc2626', // red-600
+    color: '#c44536',
     popGen: 0,
     incomeGen: 0,
+    upkeep: 0,
+    unlockTier: 0,
   },
 };

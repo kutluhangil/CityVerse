@@ -2,49 +2,92 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState } from "react";
-import { motion } from "motion/react";
-import { Cpu, ChevronRight, Activity, Zap, Layers, Focus } from "lucide-react";
+import React, { useRef, useState } from 'react';
+import { motion, type Variants } from 'motion/react';
+import {
+  Activity,
+  ChevronRight,
+  Focus,
+  Globe,
+  Layers,
+  RotateCcw,
+  Trash2,
+  Upload,
+  Zap,
+} from 'lucide-react';
+import { SaveSummary } from '../sim/storage';
+import { useI18n } from '../utils/i18n';
 
 interface StartScreenProps {
-  onStart: (aiEnabled: boolean) => void;
-  aiAvailable: boolean;
+  saveSummary: SaveSummary | null;
+  onContinue: () => void;
+  onStartNew: () => void;
+  onDeleteSave: () => void;
+  onImportSave: (json: string) => boolean;
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
+      staggerChildren: 0.08,
+      delayChildren: 0.12,
     },
   },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", damping: 25, stiffness: 200 },
+    transition: { type: 'spring', damping: 28, stiffness: 220 },
   },
 };
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStart, aiAvailable }) => {
-  const [aiEnabled, setAiEnabled] = useState(aiAvailable);
+const StartScreen: React.FC<StartScreenProps> = ({
+  saveSummary,
+  onContinue,
+  onStartNew,
+  onDeleteSave,
+  onImportSave,
+}) => {
+  const { locale, toggleLocale, t } = useI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const ok = onImportSave(String(reader.result ?? ''));
+      setImportError(!ok);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   return (
     <div className="absolute inset-0 z-50 flex pointer-events-auto font-sans overflow-hidden">
-      {/* Left Panel: Premium SaaS Layout */}
-      <motion.div
-        initial={{ x: "-100%" }}
-        animate={{ x: 0 }}
-        transition={{ type: "spring", damping: 35, stiffness: 200 }}
-        className="w-full md:w-[45vw] lg:w-[40vw] h-full bg-[#050505]/95 backdrop-blur-3xl relative border-r border-white/5 flex flex-col justify-center px-8 md:px-16"
+      <button
+        type="button"
+        data-testid="lang-toggle"
+        onClick={toggleLocale}
+        aria-label="Toggle language"
+        className="paper-pill fixed top-4 right-4 z-50 flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink hover:bg-sunk cursor-pointer"
       >
-        <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-cyan-900/20 to-transparent pointer-events-none"></div>
+        <Globe size={13} />
+        {locale.toUpperCase()}
+      </button>
 
+      <motion.div
+        initial={{ x: '-100%' }}
+        animate={{ x: 0 }}
+        transition={{ type: 'spring', damping: 35, stiffness: 220 }}
+        className="w-full md:w-[45vw] lg:w-[40vw] h-full paper-dot-bg relative border-r-2 border-ink flex flex-col justify-center px-8 md:px-14"
+      >
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -53,138 +96,134 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, aiAvailable }) => {
         >
           <motion.div
             variants={itemVariants}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 mb-8"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-ink bg-raised mb-6 shadow-[2px_2px_0_#141413]"
           >
-            <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span>
-            <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-cyan-100">
-              Premium Alpha Engine
+            <span className="flex h-2 w-2 rounded-full bg-clay animate-pulse" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-ink">
+              {t('brandBadge')}
             </span>
           </motion.div>
 
           <motion.h1
             variants={itemVariants}
-            className="font-display text-5xl md:text-7xl font-bold leading-[0.9] tracking-tighter text-white mb-6"
+            className="font-serif text-5xl md:text-6xl font-medium leading-[1.02] tracking-tight text-ink mb-5"
           >
-            Build the Future.
+            {t('heroTitleA')}
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-              Powered by AI.
-            </span>
+            <span className="italic text-clay-ink">{t('heroTitleB')}</span>
           </motion.h1>
 
           <motion.p
             variants={itemVariants}
-            className="text-gray-400 text-base md:text-lg mb-10 leading-relaxed font-light"
+            className="text-ink-2 text-base md:text-[17px] mb-7 leading-relaxed"
           >
-            Step into the role of Mayor in a procedurally generated metropolis
-            where Artificial Intelligence drives the economy, dictates city
-            goals, and creates breaking news.
+            {t('heroDesc')}
           </motion.p>
 
-          {/* AI Toggle Box */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-white/[0.03] p-5 md:p-6 rounded-2xl border border-white/10 mb-10 hover:bg-white/[0.05] transition-colors relative overflow-hidden group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 to-cyan-500/5 group-hover:to-cyan-500/10 transition-colors"></div>
+          {saveSummary && (
+            <motion.div
+              variants={itemVariants}
+              className="paper-pill mb-4 px-4 py-2.5 text-xs font-mono tabular-nums flex items-center justify-between bg-sunk"
+            >
+              <span className="text-ink-2">
+                {t('savedPrefix')} {saveSummary.day} ·{' '}
+                {Math.floor(saveSummary.population).toLocaleString()}{' '}
+                {t('citizensWord')}
+              </span>
+              <span className="text-sage font-bold">
+                ${Math.floor(saveSummary.money).toLocaleString()}
+              </span>
+            </motion.div>
+          )}
 
-            <label className="flex items-start md:items-center justify-between cursor-pointer relative z-10 w-full">
-              <div className="flex gap-4 items-center">
-                <div
-                  className={`p-3 rounded-xl border transition-colors ${aiEnabled ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-white/5 border-white/10 text-gray-500"}`}
-                >
-                  <Cpu size={24} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-semibold text-lg text-white">
-                    Gemini Advisor
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {aiAvailable
-                      ? "Dynamic quests & civilian feedback"
-                      : "Unavailable in this deployment"}
-                  </span>
-                </div>
-              </div>
+          <motion.div variants={itemVariants} className="flex flex-col gap-3 mb-8">
+            <button
+              onClick={saveSummary ? onContinue : onStartNew}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-7 rounded-xl font-mono font-bold uppercase tracking-wider text-xs bg-clay hover:bg-clay-ink text-white border-[1.5px] border-ink shadow-[3px_3px_0_#141413] active:translate-x-[1px] active:translate-y-[1px] transition-all group cursor-pointer"
+            >
+              <span>{saveSummary ? t('continueCity') : t('initSim')}</span>
+              <ChevronRight
+                size={16}
+                className="group-hover:translate-x-1 transition-transform"
+              />
+            </button>
 
-              <div className="relative flex-shrink-0 mt-2 md:mt-0 ml-4">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={aiEnabled}
-                  disabled={!aiAvailable}
-                  onChange={(e) => setAiEnabled(e.target.checked)}
-                />
-                <div
-                  className={`w-12 h-6 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border border-gray-700 ${aiAvailable ? "bg-gray-800 peer peer-checked:after:translate-x-full peer-checked:after:border-white peer-checked:bg-cyan-500 peer-checked:after:bg-white" : "bg-gray-900 opacity-60 cursor-not-allowed"}`}
-                ></div>
-              </div>
-            </label>
-            {!aiAvailable && (
-              <p className="mt-3 text-xs text-amber-300/80">
-                Gemini is not configured on this deployment, so the city runs in
-                offline mode.
-              </p>
+            <div className="flex flex-wrap gap-2">
+              {saveSummary && (
+                <>
+                  <button
+                    onClick={onStartNew}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border-[1.5px] border-ink bg-raised hover:bg-sunk text-xs font-mono font-bold uppercase tracking-wider text-ink shadow-[2px_2px_0_#141413] transition-colors cursor-pointer"
+                  >
+                    <RotateCcw size={13} />
+                    {t('newCity')}
+                  </button>
+                  <button
+                    onClick={onDeleteSave}
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border-[1.5px] border-danger bg-raised hover:bg-band/30 text-xs font-mono font-bold uppercase tracking-wider text-danger shadow-[2px_2px_0_#c44536] transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    {t('deleteSave')}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border-[1.5px] border-ink bg-raised hover:bg-sunk text-xs font-mono font-bold uppercase tracking-wider text-ink shadow-[2px_2px_0_#141413] transition-colors cursor-pointer"
+              >
+                <Upload size={13} />
+                {t('importJson')}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+
+            {importError && (
+              <p className="text-xs font-mono text-danger">{t('invalidSave')}</p>
             )}
           </motion.div>
 
-          {/* CTA */}
           <motion.div
             variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-4 mb-12"
+            className="flex gap-8 border-t border-line pt-6"
           >
-            <button
-              onClick={() => onStart(aiEnabled)}
-              className="flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-full font-bold tracking-tight text-white transition-all group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 animate-bg-pan bg-[length:200%_auto] z-0 opacity-80 group-hover:opacity-100 transition-opacity"></div>
-              <div className="absolute inset-[2px] bg-black/50 rounded-full z-0 group-hover:bg-black/30 transition-colors"></div>
-              <span className="relative z-10">Initialize Simulation</span>
-              <ChevronRight
-                size={18}
-                className="relative z-10 group-hover:translate-x-1 transition-transform"
-              />
-            </button>
-          </motion.div>
-
-          {/* Feature Micro-Labels */}
-          <motion.div
-            variants={itemVariants}
-            className="flex gap-8 border-t border-white/10 pt-8"
-          >
-            <div className="flex flex-col gap-2">
-              <Activity size={16} className="text-cyan-400" />
-              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
-                Dynamic Econ
+            <div className="flex flex-col gap-1.5">
+              <Activity size={16} className="text-clay" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-3 font-bold">
+                {t('featEcon')}
               </span>
             </div>
-            <div className="flex flex-col gap-2">
-              <Layers size={16} className="text-blue-400" />
-              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
-                Procedural Gen
+            <div className="flex flex-col gap-1.5">
+              <Layers size={16} className="text-ink" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-3 font-bold">
+                {t('featDiorama')}
               </span>
             </div>
-            <div className="flex flex-col gap-2">
-              <Zap size={16} className="text-amber-400" />
-              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
-                Live Traffic
+            <div className="flex flex-col gap-1.5">
+              <Zap size={16} className="text-sage" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-3 font-bold">
+                {t('featTraffic')}
               </span>
             </div>
           </motion.div>
         </motion.div>
       </motion.div>
 
-      {/* Right Panel: Transparent view with Live Preview Badge */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 2 }}
+        transition={{ delay: 0.7, duration: 1.2 }}
         className="hidden md:flex flex-1 relative pointer-events-none"
       >
-        <div className="absolute bottom-12 right-12 flex items-center gap-3 px-5 py-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
-          <Focus size={16} className="text-cyan-400" />
-          <span className="text-xs uppercase tracking-widest font-bold text-white">
-            Live Engine Preview
+        <div className="paper-pill absolute bottom-10 right-10 flex items-center gap-2.5 px-4 py-2">
+          <Focus size={15} className="text-clay" />
+          <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-ink">
+            {t('livePreview')}
           </span>
         </div>
       </motion.div>
